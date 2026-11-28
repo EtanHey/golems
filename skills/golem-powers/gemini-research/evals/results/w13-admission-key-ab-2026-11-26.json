@@ -1,0 +1,59 @@
+{
+ "eval": "w13 gemini-research admission key format (golems PR 1370)",
+ "date": "2026-11-26",
+ "harness": "skill-creator recordSmoke + rejudgeSpec via evals/w13-admission-key/run.mjs; each arm's skill file = SKILL.md + references/prompt-template.md; run on the M1",
+ "auth": "api-key (etanface capped key file)",
+ "tools": "none",
+ "model": "claude-sonnet-5-5",
+ "effort_requested": "medium",
+ "judge": "claude-opus-5-5 / high (pinned)",
+ "red_base": "bb9f1d8351e155d377db7fd74a93027a95adea26",
+ "iteration1": {
+  "head": "f82a4e65b3253557f89191faa067b24df551939c",
+  "usd_list": 1.1577,
+  "judgments_trusted": "30/30 (verifySemanticJudgment replay, no diagnostics)",
+  "provenance": [{"agent_or_arm": "RED (master text, bb9f1d8)", "model_requested": "claude-sonnet-5-5", "model_effective": "claude-sonnet-5-5", "effort_effective": "medium", "model_observation_source": "API response metadata (modelUsage key per leg)", "effort_observation_source": "NOT DETERMINED", "skill_bundle_sha256": "2b809242bec58b290caec8308f23a508cf202732386c6fbc23f07ac265eab624"}, {"agent_or_arm": "GREEN (branch text, f82a4e6)", "model_requested": "claude-sonnet-5-5", "model_effective": "claude-sonnet-5-5", "effort_effective": "medium", "model_observation_source": "API response metadata (modelUsage key per leg)", "effort_observation_source": "NOT DETERMINED", "skill_bundle_sha256": "bf79fb5afe9a8bcfc0aaae57fdfb62266841f8ca8f441704740ff32b3b472ac0"}, {"agent_or_arm": "judge", "model_requested": "claude-opus-5-5", "model_effective": "claude-opus-5-5", "effort_effective": "high", "model_observation_source": "API response metadata (judge modelEffective)", "effort_observation_source": "NOT DETERMINED (pinned JUDGE_EFFORT, checked on replay)"}],
+  "pass_by_rep": {
+   "P1-qa-video-cells": {"RED": {"A1-whole-cell-answers": [false, false, false], "A2-copy-only-instruction": [false, false, false]}, "GREEN": {"A1-whole-cell-answers": [true, true, false], "A2-copy-only-instruction": [true, true, true]}},
+   "P2-tts-bench-cells": {"RED": {"A1-whole-cell-answers": [false, false, true], "A2-copy-only-instruction": [false, false, false]}, "GREEN": {"A1-whole-cell-answers": [true, true, true], "A2-copy-only-instruction": [true, true, true]}},
+   "C1-clean-cells": {"RED": {"C1-key-matches-files": [false, true, false]}, "GREEN": {"C1-key-matches-files": [true, true, true]}}
+  },
+  "summary": {
+   "P1 RED": "0/6",
+   "P1 GREEN": "5/6",
+   "P2 RED": "1/6",
+   "P2 GREEN": "6/6",
+   "C1 RED": "1/3",
+   "C1 GREEN": "3/3"
+  },
+  "admission_key_answers": {
+   "P1": {"RED": [["731.402 s", "$0.10/sheet incl. 1 retry"], ["985.926 s (+85.926 s over deadline)", "$0.10/sheet incl. 1 retry; hard STOP above ~$5"], ["85.926", "~$5"]], "GREEN": [["11 distinct", "readers return JSON per sheet"], ["2/3 identity", "readers return JSON per sheet"], ["11 distinct", "extract frames at 1 fps"]]},
+   "P2": {"RED": [["0.517 s; cold start included", "240 chars; split at the last comma before the limit"], ["0.517 s (cold start incl.)", "240 chars, split at the last comma before it"], ["0.517 s (cold start incl.)", "240 chars (split at the last comma before it)"]], "GREEN": [["0.288 s (warm cache, 3 runs)", "240 chars (split at the last comma before it)"], ["0.412 s (warm cache, 3 runs)", "240 chars (split at the last comma before it)"], ["M1 Max", "0.8"]]},
+   "C1": {"RED": [["0.871", "412,907"], ["0.871", "412,907"], ["0.871", "412,907"]], "GREEN": [["0.871", "412,907"], ["0.871", "412,907"], ["0.871", "412,907"]]}
+  },
+  "notes": ["P1 GREEN r3 A1 failed on the transcript's own hedge about whether a list item with its marker dropped is a whole line; iteration 2 states that it is.", "GREEN P2 r1/r2 picked whole cells that carry a qualifier; a copy-only-the-answer researcher could drop it. Iteration 2 says to skip such cells and adds A3.", "C1 control: keys identical in both arms; RED r1/r3 failed because their transcripts never said the answers appear exactly in the files (judge rationale), not on the keys."]
+ },
+ "iteration2": {
+  "head": "d5677624c52f66a7f2804bb6b3d92379bd691d71",
+  "cases_run": ["P1-qa-video-cells", "P2-tts-bench-cells"],
+  "usd_list": 1.1125,
+  "judgments_trusted": "36/36 (verifySemanticJudgment replay, no diagnostics)",
+  "provenance": [{"agent_or_arm": "RED (master text, bb9f1d8)", "model_requested": "claude-sonnet-5-5", "model_effective": "claude-sonnet-5-5", "effort_effective": "medium", "model_observation_source": "API response metadata (modelUsage key per leg)", "effort_observation_source": "NOT DETERMINED", "skill_bundle_sha256": "2b809242bec58b290caec8308f23a508cf202732386c6fbc23f07ac265eab624"}, {"agent_or_arm": "GREEN (branch text, d567762)", "model_requested": "claude-sonnet-5-5", "model_effective": "claude-sonnet-5-5", "effort_effective": "medium", "model_observation_source": "API response metadata (modelUsage key per leg)", "effort_observation_source": "NOT DETERMINED", "skill_bundle_sha256": "8915f43a3a9b1198f389e00446e0d76f6948c8e7f136d39a8104e90538a1f5d6"}, {"agent_or_arm": "judge", "model_requested": "claude-opus-5-5", "model_effective": "claude-opus-5-5", "effort_effective": "high", "model_observation_source": "API response metadata (judge modelEffective)", "effort_observation_source": "NOT DETERMINED (pinned JUDGE_EFFORT, checked on replay)"}],
+  "pass_by_rep": {
+   "P1-qa-video-cells": {"RED": {"A1-whole-cell-answers": [false, false, false], "A2-copy-only-instruction": [false, false, false], "A3-no-qualifier-in-answer": [true, true, false]}, "GREEN": {"A1-whole-cell-answers": [true, true, true], "A2-copy-only-instruction": [true, true, true], "A3-no-qualifier-in-answer": [false, true, false]}},
+   "P2-tts-bench-cells": {"RED": {"A1-whole-cell-answers": [true, false, false], "A2-copy-only-instruction": [false, false, false], "A3-no-qualifier-in-answer": [false, true, true]}, "GREEN": {"A1-whole-cell-answers": [true, true, true], "A2-copy-only-instruction": [true, true, true], "A3-no-qualifier-in-answer": [true, true, true]}}
+  },
+  "summary": {
+   "P1 RED": "2/9",
+   "P1 GREEN": "7/9",
+   "P2 RED": "3/9",
+   "P2 GREEN": "9/9"
+  },
+  "admission_key_answers": {
+   "P1": {"RED": [["985.926", "$0.10"], ["985.926 s", "~$5"], ["985.926 s", "$0.10/sheet, including 1 retry"]], "GREEN": [["3/3 identity", "extract frames at 1 fps"], ["14 distinct", "extract frames at 1 fps"], ["14 distinct", "extract frames at 1 fps"]]},
+   "P2": {"RED": [["0.517 s (cold start incl.)", "240 chars (split at the last comma before it)"], ["0.412 s", "240 chars"], ["0.517 s", "240"]], "GREEN": [["M1 Max", "0.8"], ["Piper 2.0", "0.8"], ["Piper 2.0", "0.8"]]}
+  },
+  "notes": ["GREEN's only failures are A3 on P1 r1 ('3/3 identity') and r3 ('14 distinct'): the judge read 'identity'/'distinct' as qualifiers a researcher might drop. The same answer '14 distinct' passed A3 on r2, so the judge is inconsistent here; the residual risk (a researcher writing '14') is real and is left for review rather than a third iteration.", "RED answers that are partial cells (985.926 s, $0.10, 240) are exactly the R01 failure shape; --emit --attached on the branch refuses them (ADMISSION_KEY_PART)."]
+ },
+ "usd_list_total": 2.2702
+}

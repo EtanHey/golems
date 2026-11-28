@@ -13,7 +13,7 @@ set -uo pipefail
 # Release scripts must stay identical to their verified manifest after execution.
 export PYTHONDONTWRITEBYTECODE=1
 
-GC_MIN_SAFE_SHA=c2fb389974ebc18df088a28e08f011220edd2b8f
+GC_MIN_SAFE_SHA=e0ea3fd5a5cafb51fd70e5ccf23a296c80c60149
 PIN="${GOLEMS_WORKTREE_GC_PIN_ROOT-$HOME/Gits/golems/.worktrees/hooks-live}"
 PIN_SHA=unavailable
 NIGHTLY_RECEIPT=unavailable

@@ -64,7 +64,7 @@ load lib/worktree-gc-fixtures
   repo="$(make_fixture_repo dry-run-repo)"
   worktree="$(add_branch_worktree "$repo" dry-run-branch)"
 
-  run "$WORKTREE_GC" --repo "$repo"
+  run "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · dry-run-branch · dirty=0 · ahead=0 · REMOVE · eligible; report only"* ]] &&
@@ -90,7 +90,7 @@ load lib/worktree-gc-fixtures
   repo="$(make_fixture_repo master-repo master)"
   worktree="$(add_branch_worktree "$repo" master-candidate origin/master)"
 
-  run "$WORKTREE_GC" --repo "$repo"
+  run "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · master-candidate · dirty=0 · ahead=0 · REMOVE · "* ]] &&
@@ -102,7 +102,7 @@ load lib/worktree-gc-fixtures
   repo="$(make_fixture_repo trunk-repo trunk)"
   worktree="$(add_branch_worktree "$repo" trunk-candidate origin/trunk)"
 
-  run "$WORKTREE_GC" --repo "$repo"
+  run "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · trunk-candidate · dirty=0 · ahead=0 · REMOVE · "* ]] &&
@@ -147,7 +147,7 @@ load lib/worktree-gc-fixtures
   worktree="$(add_branch_worktree "$repo" scanned-candidate)"
   mkdir "$fake_home/Gits/not-a-repo"
 
-  run env HOME="$fake_home" "$WORKTREE_GC"
+  run env HOME="$fake_home" "$WORKTREE_GC" --idle-hours 0
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · scanned-candidate · dirty=0 · ahead=0 · REMOVE · "* ]] &&
@@ -241,7 +241,7 @@ load lib/worktree-gc-fixtures
   printf 'cache\n' > "$worktree/node_modules/pkg/index.js"
   [ -z "$(git -C "$worktree" status --porcelain)" ]
 
-  run "$WORKTREE_GC" --repo "$repo"
+  run "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · ignored-data-branch · dirty=0 · ahead=0 · REMOVE · "* ]] &&
@@ -350,7 +350,7 @@ load lib/worktree-gc-fixtures
   worktree="$(add_branch_worktree "$repo" normal-index-c-branch)"
   [[ "$(env LC_ALL=C LANG=C git -C "$worktree" ls-files -v fixture.txt)" == H\ * ]] || false
 
-  run env LC_ALL=C LANG=C "$WORKTREE_GC" --repo "$repo"
+  run env LC_ALL=C LANG=C "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
 
   [ "$status" -eq 0 ] &&
@@ -362,7 +362,7 @@ load lib/worktree-gc-fixtures
   worktree="$(add_branch_worktree "$repo" normal-index-utf8-branch)"
   [[ "$(env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 git -C "$worktree" ls-files -v fixture.txt)" == H\ * ]] || false
 
-  run env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 "$WORKTREE_GC" --repo "$repo"
+  run env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
 
   [ "$status" -eq 0 ] &&
@@ -628,7 +628,7 @@ load lib/worktree-gc-fixtures
 
 # --- R1 (#703 review: H1, H2, M1, M2, M3, L1, L2; brainlayer 23:28 open-PR rule) ---
 
-@test "H1: a registered worktree outside <repo>/.worktrees is out of scope in both modes" {
+@test "H1: a registered worktree outside managed .worktrees and same-repo sibling roots stays out of scope" {
   repo="$(make_fixture_repo scope-repo)"
   outside="$TEST_ROOT/runtime-checkout"
   git -C "$repo" worktree add -q --detach "$outside" origin/main
