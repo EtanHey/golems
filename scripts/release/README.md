@@ -38,6 +38,21 @@ Symlinks and submodules in selected paths are rejected. Files retain their Git
 executable bit as `0755` or `0644`. USTAR entries have fixed ownership/mtime,
 UTF-8 byte order, and a gzip header without clock/platform metadata.
 
+`build-release.test.mjs` statically checks every selected script's literal local
+dependencies against the shipping policy. It covers shell source/interpreter
+paths and `SCRIPT_DIR`/`HERE`, relative JS/TS imports and `import.meta.url` URLs,
+and Python `__file__` sibling/parent joins and local imports. The worktree GC
+payload includes its remote timeout helper and census JSON schema. The scanner
+does not evaluate computed paths or arbitrary language expressions; add a
+focused scanner case when introducing another dependency form. Checkout-only
+exceptions must name an exact source/target pair with a reason; none are needed
+for the currently recognized forms. To reproduce against committed baseline
+objects and their shipping policy, run:
+
+```sh
+RELEASE_CLOSURE_BASE=cb8e5fd3 bun test scripts/tests/build-release.test.mjs -t 'every shipped script'
+```
+
 `MANIFEST.json` contains `{version, commit, files:[{path, sha256, mode}]}`;
 mode is an octal string. It lists every payload file, including the generated
 package metadata, and excludes itself to avoid a circular hash. `SHA256SUMS`
