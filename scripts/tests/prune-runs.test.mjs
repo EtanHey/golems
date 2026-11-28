@@ -110,7 +110,9 @@ test('budget fixtures are measured fail/pass and row policy stays scoped', () =>
   }
   const doc = JSON.parse(fs.readFileSync('scripts/ratchet/rows.json'));
   assert.doesNotThrow(() => parseRows(doc));
-  doc.rows.at(-1).id = 'unapproved-row';
+  const retention = doc.rows.find(row => row.id === 'ratchet-runs-size');
+  assert.ok(retention, 'retention row must exist even when other rows follow it');
+  retention.id = 'unapproved-row';
   assert.throws(() => parseRows(doc), /report-only/);
 });
 

@@ -220,8 +220,14 @@ def validate_citations(item, tile_count):
         match = span.match(tail)
         if not match:
             # Ordinary nouns (frame rate, frames per second, tile layout) are
-            # not citations. Number words and punctuated indexes remain invalid.
-            if re.match(r'[-#\d\[(:]|' + word_number, tail, re.I):
+            # not citations. Punctuation after a bare tile noun is prose unless
+            # it introduces an index. Still scan nested labels independently.
+            attempt = r'[-#\d\[(:]|' + word_number
+            if citation[0].lower().startswith('tile'):
+                attempt = (r'[#\d\[]|' + word_number +
+                           r'|[-(:](?:\s*[-(:])*\s*(?:[-#\d\[]|x\s*=|'
+                           r'(?:index\s+|e\.g\.\s*|t)-?\d|eleventh\b|$|' + word_number + r')')
+            if re.match(attempt, tail, re.I):
                 malformed = True
             continue
         while match:

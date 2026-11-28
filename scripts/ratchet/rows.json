@@ -263,6 +263,17 @@
       "bug_fixture": "2f4a3f8e232ae908bc6a0516b102001b8d946e3c4c9726f3b07251ca027f7688",
       "fix_fixture": "5b01f0ceda336433b74a74283513a30913967fe2cf9a7f6d1ea124f3a4ef9cda",
       "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
+    },
+    {
+      "id": "qa-video-tile-noun",
+      "metric": "real visual-batch CLI recovers bare tile nouns, rejects malformed tile punctuation, and preserves executed base verdicts on T-shaped cases",
+      "kind": "real",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "016d044a199a67df2a1e424140b3ae554f712a13",
+      "fix_sha": "56cfb0e5042b6c0178ae9d097b1f4ade81464195",
+      "command": "python3 -m pytest -q skills/golem-powers/qa-video/tests/test_tile_noun.py"
     }
   ]
 }
