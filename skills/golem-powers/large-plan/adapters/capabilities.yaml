@@ -37,26 +37,7 @@ adapters:
     model_policy: "agent-routing/references/model-and-effort.md"
 
   cursor:
-    binary: cursor
-    worktree: manual
-    session_resume: false
-    mcp_access: false
-    hooks: false
-    subagents: false
-    background_tasks: false
-    plan_mode: false
-    native_monitoring: false
-    loop_monitoring: false
-    prompting:
-      style: output_contract
-      structure: markdown_headers
-      max_skill_tokens: 4000
-    unique:
-      - codebase_indexing        # @codebase — best for research phases
-      - text_output_mode         # --output-format text for phase audits
-      - pr_bugbot                # @cursor @bugbot review
-    verification_needed: true    # Can report gitignored files as "committed"
-    model_policy: "fleet canon #1"
+    retired: true # No Cursor in the fleet.
 
 # Phase routing — which CLI is best for each phase type
 routing_policy: "/agent-routing § Routing rules (SSOT)"

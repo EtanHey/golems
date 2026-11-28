@@ -9,7 +9,7 @@ This reference begins at the cmuxlayer tool boundary.
 
 | Operation | MCP Tool | Notes |
 |-----------|----------|-------|
-| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini peers. Always pass `role` and `authority`. `role` is `implementor`, `reviewer` or `gatherer` (legacy `orchestrator`/`worker` still accepted; `"implementer"` is rejected); `authority` is `lead` or `worker`, and reviewer/gatherer must be `worker`. A roleless Claude spawn errors — `authority` alone does not satisfy it (`ROLE_REQUIRED` when that is the only problem, `INVALID_SPAWN_SPEC` when combined with others); any other roleless spawn becomes a worker. `placement` is derived from authority (lead=left, worker=right) and must agree if passed. Launcher titles never set the spawn role; title inference only affects placement and topology of existing panes. Also creates plain terminals via `type:"terminal"` |
+| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Gemini peers. Always pass `role` and `authority`. `role` is `implementor`, `reviewer` or `gatherer` (legacy `orchestrator`/`worker` still accepted; `"implementer"` is rejected); `authority` is `lead` or `worker`, and reviewer/gatherer must be `worker`. A roleless Claude spawn errors — `authority` alone does not satisfy it (`ROLE_REQUIRED` when that is the only problem, `INVALID_SPAWN_SPEC` when combined with others); any other roleless spawn becomes a worker. `placement` is derived from authority (lead=left, worker=right) and must agree if passed. Launcher titles never set the spawn role; title inference only affects placement and topology of existing panes. Also creates plain terminals via `type:"terminal"` |
 | Send follow-up | `mcp__cmuxlayer__send_to` | Default `mode:"agent"` keys off `agent_id` |
 | Send raw keystrokes / keys / commands | `mcp__cmuxlayer__send_to` with `mode:"surface"` / `"key"` / `"command"` | The one delivery tool for all four modes |
 | Wait for state | `mcp__cmuxlayer__wait_for` | Replaces client-side poll loops |
@@ -94,7 +94,7 @@ Use `spawn_agent` for full worker lifecycle. Keep `send_to` surface/key modes fo
 
 **When to pass `crash_recover: true`:**
 - Long-running Codex workers on PR loops (>30 min expected).
-- Cursor audit workers that need to survive a cmux daemon restart.
+- Supported audit workers that need to survive a cmux daemon restart.
 - Claude workers executing multi-hour sprints where mac-crash resilience matters.
 - ANY worker in an overnight / autonomous context where you won't be watching.
 
@@ -169,19 +169,6 @@ non-agent terminal or a launcher invocation that isn't a `cli` enum value.
 
 **For repoGolem launchers:** see **repogolem** (canonical).
 
-### Cursor `/auto-run` fallback
+### Retired Cursor fallback
 
-Default path: put the task in `spawn_agent.prompt` and talk to the worker via `send_to({agent_id,...})`.
-
-If a live Cursor pane still stalls on approvals, send `/auto-run` as a follow-up first:
-
-```text
-wait_for({ agent_id, target_state: "ready", timeout_ms: 120000 })
-send_to({ agent_id, text: "/auto-run", press_enter: true })
-send_to({ agent_id, text: "<task prompt>", press_enter: true })
-```
-
-If FR-06 blocks `send_to` in agent mode, confirm the raw pane with `read_screen` and use one `send_to({mode:"surface"})` fallback.
-
-
-Cursor dispatch: T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+No Cursor in the fleet. Use supported roles via `/agent-routing`; workers never start their own reviewer.

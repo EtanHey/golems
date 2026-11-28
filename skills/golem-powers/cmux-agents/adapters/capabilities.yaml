@@ -34,24 +34,7 @@ adapters:
     model_policy: "agent-routing/references/model-and-effort.md"
 
   cursor:
-    binary: null  # Cursor work uses T3 delegate_task, not a CLI
-    worktree: manual
-    session_resume: false
-    mcp_access: false
-    hooks: false
-    subagents: false
-    background_tasks: false
-    prompting:
-      style: output_contract
-      structure: markdown_headers
-      thinking: reasoning_effort
-      max_skill_tokens: 4000
-    unique:
-      - codebase_indexing        # @codebase — whole-repo semantic search
-      - pr_bugbot                # @cursor @bugbot review
-      - text_output_mode         # --output-format text for audits
-    verification_needed: true    # Cursor can report gitignored files as "committed"
-    model_policy: "fleet canon #1"
+    retired: true # No Cursor in the fleet.
 
   gemini:
     binary: gemini
@@ -103,7 +86,7 @@ platform_features:
     universal: "watch -n 300 'command'"
   pr_review:
     claude_code: "Agent(subagent_type='coderabbit:code-reviewer')"
-    universal: "cr review --plain or gh pr comment '@cursor @bugbot review'"
+    universal: "cr review --plain"
 
 # CLI commands cross-reference — what each agent supports via cmux remote control
 # Use this to know which commands you can send to which agent type
@@ -159,7 +142,7 @@ cli_commands:
       claude: "via prompt"     # No built-in command
       codex: "/review"         # Built-in code review
       gemini: null
-      cursor: "T3 delegate_task Cursor child; pointer brief; collab report"
+      cursor: null # Retired; use supported roles via /agent-routing.
     plan_mode:
       claude: "via prompt"     # No built-in plan mode
       codex: "/plan"           # Read-only exploration mode

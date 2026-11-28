@@ -257,7 +257,7 @@ Each phase findings.md is the shared collaboration room:
 | Task | Owner | Status |
 |------|-------|--------|
 | Research X | gemini | done |
-| Implement Y | cursor | in progress |
+| Implement Y | codex | in progress |
 ```
 
 ---
@@ -316,7 +316,7 @@ Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow ke
 
 ## Platform Features vs Universal Fallbacks
 
-> In a T3 thread the T3 column is the default. The two **cmux adapter** columns cover visible pane fleets outside T3: Claude Code first, then the universal fallback for Codex or Cursor.
+> In a T3 thread the T3 column is the default. The two **cmux adapter** columns cover visible pane fleets outside T3: Claude Code first, then the universal fallback for Codex.
 > Full adapter docs: [adapters/](adapters/)
 
 | Feature | T3 (default in T3) | cmux adapter: Claude Code | cmux adapter: universal fallback |

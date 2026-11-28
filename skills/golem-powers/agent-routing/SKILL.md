@@ -34,6 +34,10 @@ Attribution: Etan, 2026-10-26.
 
 This section is the single source of truth for fleet routing. Fleet canon, global instructions, collab templates and other skills point here; models resolve through `standards/model-roles.json`.
 
+### Retired provider (2026-11-27)
+
+No Cursor in the fleet. Source: orc → all leads, 2026-11-27 21:09 IST, **NO CURSOR IN THE FLEET**. Etan: "why are we using my cursor usage again...? I need the usage kept for grokbot, and cursor doesnt have that good of models anyway". Never use Cursor as worker, gatherer, verifier or reviewer; Bugbot is retired too.
+
 ### Gathering
 
 **Antigravity is an underused pool (2026-11-08, Etan, via orc; corrected ruling).**
@@ -118,13 +122,13 @@ Review is sized to risk; the PR's `size:*` label sets the tier.
 
 - "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs follow the UI flow below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
-- Full panel only for L, data or security paths: a fresh `claude.judgment` reviewer, retaining the table's Codex reviewer when Claude implements so cross-vendor review holds. No Cursor or Bugbot. No Gemini model ever reviews, at any size.
+- "NO Gemini Argon as a reviewer (it fabricates)" (Etan, 2026-10-18, via orc collab). The earlier "Opus + Cursor" panel membership is superseded by the 2026-11-27 ruling. Full panel only for L, data or security paths: a fresh `claude.judgment` reviewer, retaining the table's Codex reviewer when Claude implements so cross-vendor review holds. No Cursor or Bugbot. No Gemini model ever reviews, at any size.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement` and reports functional defects; proof requirements now follow [pr-loop Visual proof](../pr-loop/SKILL.md#visual-proof).
 - UI flow (Etan FRONTEND RULE, 2026-10-28): A Claude-implemented visual slice gets the red-team Claude (taste, BOTH skills) plus the table's Codex reviewer (cross-vendor, canon #1); Codex plumbing gets the red-team Claude, which is already the other vendor. Both reviews cite the Visual proof.
   The red-team Claude is a fresh `claude.judgment`, never the implementer, loading `frontend-design:frontend-design` and `emil-design-eng`; normal size-based round caps and the full panel remain.
 
 Claude keeps the official auto-updating `frontend-design:frontend-design` plugin;
-Codex use the pinned `frontend-design` skill. These names each denote one
+Codex uses the pinned `frontend-design` skill. These names each denote one
 provider route (Etan, 2026-10-27).
 
 ### Records
@@ -191,7 +195,7 @@ The launcher refuses a worker spawn without an explicit effort. Codex prompted/w
 - Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). Use the role config for current defaults and candidate gates; that reference supplies runtime verification and detailed procedures pending PR 2b.
 - Launching, reusing, monitoring, recovering, or closing a cmux worker lane? Read [references/delegation-operations.md](references/delegation-operations.md). Its monitor-loop and isolation mechanics are the cmux adapter.
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
-- Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
+- Fanning out independent units? Read [references/fan-out-engines.md](references/fan-out-engines.md) (supported engines and dispatch hygiene).
 - Dispatching child work from a T3 thread (`delegate_task`, review rounds, pending questions, PR watch)? Read [references/t3-native.md](references/t3-native.md). It owns the T3 child lifecycle (dispatch, wait, isolation, verify, settle), not delegation-operations.md: for a T3 child skip that file's monitor loop and no-worktree route.
 
 Read every reference triggered by the mission before dispatch. The live reference owns its detailed procedure; Routing rules (SSOT) and the role config take precedence over conflicting routing or model-selection recipes.

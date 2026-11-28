@@ -78,7 +78,7 @@ The risk-sized rulings (Etan 2026-10-18, via orc collab), with the bot clarifica
 
 > Full panel only for L, data or security paths, and that panel = [composition: `/agent-routing` § Routing rules (SSOT)].
 
-**Bot clarification:** Review bots (CodeRabbit/Codex) run only AFTER the inner loop, and they're advisory. Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.
+**Bot clarification (2026-11-04):** Review bots (CodeRabbit/Codex) run only AFTER the inner loop, and they're advisory. Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.
 
 > Give each test/build its own ports and temp folders so they run in parallel.
 

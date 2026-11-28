@@ -35,10 +35,10 @@ _agent_repos_path() {
 #   spawn-agent brainlayer surface:92 'T1 kg-fix' 'Fix KG search' --model sonnet
 #   spawn-agent golems surface:115 'T2 coach' 'Fix scheduling' --launcher coachClaude
 #   spawn-agent orchestrator surface:116 'T3 gemini' 'List files here' --cli gemini
-#   spawn-agent golems surface:117 'T4 cursor-audit' 'Audit security' --cli cursor-audit
+#   Cursor CLI modes are retired and refuse before sending a launch command.
 # ---------------------------------------------------------------------------
 spawn-agent() {
-  local repo="${1:?Usage: spawn-agent <repo> <surface> <tab-name> <prompt> [--model M] [--launcher L] [--cli gemini|cursor-audit|cursor-work|codex]}"
+  local repo="${1:?Usage: spawn-agent <repo> <surface> <tab-name> <prompt> [--model M] [--launcher L] [--cli gemini|codex]}"
   local surface="${2:?Missing surface (e.g. surface:114)}"
   local tab_name="${3:?Missing tab name}"
   local prompt="${4:?Missing prompt}"
@@ -55,6 +55,13 @@ spawn-agent() {
       *) echo "spawn-agent: unknown flag $1" >&2; return 1 ;;
     esac
   done
+
+  case "$cli" in
+    cursor|cursor-audit|cursor-work)
+      echo 'Cursor is retired; see /agent-routing for supported Codex or Claude roles.' >&2
+      return 1
+      ;;
+  esac
 
   local repos_path
   repos_path=$(_agent_repos_path)
@@ -80,14 +87,12 @@ spawn-agent() {
   if [[ -n "$cli" ]]; then
     # Non-Claude CLI agent — prompt goes inline, no two-step boot
     # Use absolute paths from ~/.golems/config.yaml to avoid sourcing zshrc (which triggers 1Password biometric)
-    local gemini_bin cursor_bin codex_bin
+    local gemini_bin codex_bin
     if [[ -f ~/.golems/config.yaml ]]; then
       gemini_bin=$(grep '^\s*gemini:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
-      cursor_bin=$(grep '^\s*cursor:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
       codex_bin=$(grep '^\s*codex:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
     fi
     gemini_bin="${gemini_bin:-gemini}"
-    cursor_bin="${cursor_bin:-cursor}"
     codex_bin="${codex_bin:-codex}"
 
     local cli_cmd="cd $repo_path"
@@ -95,17 +100,11 @@ spawn-agent() {
       gemini)
         cli_cmd="$cli_cmd && $gemini_bin \"$prompt\""
         ;;
-      cursor-audit)
-        cli_cmd="$cli_cmd && $cursor_bin agent --output-format text --model \"gpt-5.3-codex-xhigh\" \"$prompt\""
-        ;;
-      cursor-work)
-        cli_cmd="$cli_cmd && $cursor_bin agent --model \"gpt-5.3-codex-xhigh\" \"$prompt\""
-        ;;
       codex)
         cli_cmd="$cli_cmd && $codex_bin --full-auto --model gpt-5.4 \"$prompt\""
         ;;
       *)
-        echo "spawn-agent: unknown CLI agent: $cli (use: gemini, cursor-audit, cursor-work, codex)" >&2
+        echo "spawn-agent: unknown CLI agent: $cli (use: gemini, codex)" >&2
         return 1
         ;;
     esac

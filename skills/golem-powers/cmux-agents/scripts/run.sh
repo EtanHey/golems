@@ -71,7 +71,7 @@ case "$AGENT" in
     ;;
 
   cursor)
-    echo 'Cursor CLI dispatch is retired. Use T3 delegate_task with target: {providerInstanceId: "cursor", model: "default"}.' >&2
+    echo "Cursor is retired; see /agent-routing for supported Codex or Claude roles." >&2
     exit 1
     ;;
 

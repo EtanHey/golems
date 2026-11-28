@@ -505,7 +505,7 @@ function split_case_020() {
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -ne 0 ]
-    grep -F -q -- "T3 delegate_task" <<< "$output"
+    grep -F -q -- "Cursor is retired" <<< "$output"
     ! grep -F -q -- "CURSOR_MUST_NOT_RUN" <<< "$output"
 }
 

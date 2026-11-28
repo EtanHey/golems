@@ -71,11 +71,41 @@ gh pr comment <N> --body "@greptileai review"
 gh pr comment <N> --body "@codex review"
 ```
 
+**Bot tiering (orc ruling, 2026-09-05).** Canon #9 tiers the roster. Clause 4 of the origin ruling, verbatim: *"bot tiering — full 4-bot panel
+only on daemon/engine/transport diffs, else CodeRabbit + one, one pass per bot, duplicate findings
+answered once + dup-links."*
+That quote is provenance; its retired Cursor/Bugbot membership is superseded by the 2026-11-27 no-Cursor rule. Bots remain advisory after the inner loop; `/agent-routing` owns reviewer selection and counts.
+
 No Cursor in the fleet. Never dispatch a Cursor diff pass or request Bugbot, including for L/core paths. The routed other-vendor reviewer remains required; `/agent-routing` § Routing rules (SSOT) owns selection and counts. Existing posted findings are investigated under the normal finding rules.
 
 #### 8a.2 — Retired Cursor endpoint
 
 No Cursor in the fleet. There is no replacement endpoint pass; use the routed reviewer and exact-head checks.
+
+Bot-invocation comments are agent-authored PR comments, so the signature block
+applies to them too — the `gh()` wrapper will append it automatically once it
+ships; until then, sign them by hand like any other comment.
+
+Reviewer roster reality can degrade. If Greptile is unavailable or CodeRabbit is rate-limited, do not burn dead mentions. For a missing routed reviewer, use `/agent-routing` to select a replacement reviewer; retain Macroscope + `cr review --plain` pre-commit checks (not a substitute for the routed pair review), and document which reviewers were unavailable in the PR.
+
+### For private repos (no bot reviewers):
+
+Options A/B are PR-stage review run by whoever owns this PR loop. They do not authorize a worker to start its own inner-loop reviewer; that remains owned by `/agent-routing` § Review routing.
+
+```bash
+# Option A: Use coderabbit:code-reviewer subagent
+Agent(subagent_type="coderabbit:code-reviewer", prompt="Review PR #N")
+
+# Option B: Use cr CLI
+coderabbit review --agent  # Codex env, bounded to ~3 minutes
+```
+
+### For public repos (bot reviewers configured):
+
+Bot reviewers post on the PR. They are advisory: wait on CI and the routed review with the waiting
+policy below. Answer already-posted bot findings like any finding; never await
+a bot. Record unavailable bots only if actually requested or a real usage notice
+was posted. Cursor and Bugbot are retired and never requested.
 
 ### Waiting policy (no polling turns)
 

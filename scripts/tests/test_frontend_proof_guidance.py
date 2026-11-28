@@ -28,15 +28,35 @@ def test_visual_flow_preserves_cross_vendor_review():
     assert 'Ratified sequence:' not in text
     assert 'Sequence (lead guidance):' in text
 
-def test_cursor_endpoint_pass_is_retired():
+def test_no_live_cursor_routes_across_fleet_tree():
+    """Scan live instruction/runtime surfaces; CURSOR_GUARD_REF replays a Git tree."""
+    import os
     import re
-    docs = ['SKILL.md', 'adapters/codex.md', 'adapters/cursor.md', 'references/review-loop.md']
-    for name in docs:
-        text = (SKILLS / 'pr-loop' / name).read_text()
-        assert 'No Cursor in the fleet' in text, name
-        assert not re.search(r'providerInstanceId:\s*"cursor"', text), name
-        assert 'bugbot run' not in text, name
-    routing = (SKILLS / 'agent-routing' / 'SKILL.md').read_text()
-    assert 'No Cursor in the fleet' in routing
-    assert 'Cursor is Auto-only' not in routing
-    assert '| **Cursor** | Gather' not in routing
+    import subprocess
+    root = SKILLS.parents[1]
+    ref = os.environ.get('CURSOR_GUARD_REF')
+    files = subprocess.check_output(['git', 'ls-tree', '-r', '--name-only', ref] if ref else
+                                    ['git', 'ls-files'], cwd=root, text=True).splitlines()
+    historical = {
+        'skills/golem-powers/agent-routing/references/fan-out-head-to-head.md',
+        'skills/golem-powers/whats-new/references/changelog-sources.md',
+    }
+    patterns = [r'["\']?providerInstanceId["\']?:\s*["\']?cursor\b', r'bugbot run', r'@cursor @bugbot',
+                r'\bcursor(?:-|\s+)agent(?:[`"\'])?\s+--?', r'cursor_bin.*\bagent\b',
+                r'gather\s*=\s*Cursor', r'Cursor gathers', r'cursor:.*delegate_task', r'T3 Cursor child', r'read-only Cursor audit',
+                r'audits → Cursor', r'Cursor miners use', r'--(?:primary-)?judges[ \t]+[a-z,]*cursor']
+    errors = []
+    for name in files:
+        if name in historical or any(part in name.split('/') for part in
+                ('evals', 'fixtures', '__tests__', 'tests', 'vendor')):
+            continue
+        if not (name == 'README.md' or name.startswith(('skills/', 'standards/', 'scripts/repogolem/'))):
+            continue
+        if not name.endswith(('.md', '.yaml', '.yml', '.sh', '.zsh')):
+            continue
+        text = subprocess.check_output(['git', 'show', f'{ref}:{name}'], cwd=root, text=True) if ref else (root / name).read_text()
+        for line, content in enumerate(text.splitlines(), 1):
+            for pattern in patterns:
+                if re.search(pattern, content, re.I):
+                    errors.append(f'{name}:{line}: {pattern}')
+    assert not errors, '\n'.join(errors)

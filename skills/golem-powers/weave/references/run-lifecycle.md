@@ -389,9 +389,7 @@ Gather runs **entirely off-Claude**; Claude does judgment only. The ladder is
 **exhaustible and ordered** — probe quota before you launch, because an AUTO cap
 is a calendar fact, not an incident:
 
-1. **cursor-AUTO** (Cursor Pro included tier) — itself exhaustible: explicit
-   `--model auto` returned the usage-limit error at ~sess 348/805, operator-verified
-   ("we exhausted cursor auto tier"). [g3:54-64 → skills-audit-notes.md:191; tree-wf-review-priorart.md:42-43]
+1. Start with the eligible gather route in `/agent-routing`; Cursor is retired. The historical Cursor AUTO exhaustion receipt is evidence only, never a launch recommendation.
 2. Choose the next eligible gather route via `/agent-routing` § Routing rules (SSOT); retain the small-slice boundary. [g3:60]
 3. Keep centerpiece mining deepest (`references/topology.md`); use the routing pointer above. [g3:60]
 
@@ -609,8 +607,7 @@ or concurrency cap. Regroup its `batch-manifest.json` explicitly:
    before siblings; the K-label receipt is returned only after the entire batch.
    Verify disk outputs after each wave, then replan missing sessions until dry.
 
-`weave-cursor-run.py` was retired with AutoCursor. Cursor miners use T3
-`delegate_task` children; follow `/cursor-workflows` for that route.
+`weave-cursor-run.py` and AutoCursor are retired. No Cursor miners; use supported roles under `/agent-routing`.
 
 - **Workflow (preferred for staged mode):** a `pipeline`/`parallel` of `agent()`
   calls, each given the miner prompt below + a findings JSON schema; the workflow

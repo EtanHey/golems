@@ -259,7 +259,5 @@ refuses any command that contains an `op://` ref.
 
 Apache-2.0. See [LICENSE](LICENSE).
 
-Cursor child work uses T3 `delegate_task` with `providerInstanceId: "cursor"` and
-`model: "default"`. AutoCursor and the headless Cursor launch scripts are retired;
-stale repoGolem Cursor launchers and the cmux CLI runner refuse with that route.
-Historical Cursor parity recordings remain replayable without the removed engine.
+No Cursor in the fleet. Cursor is retired; use supported Codex or Claude roles through `/agent-routing`.
+Historical Cursor parity recordings remain replayable without dispatching Cursor.

@@ -93,7 +93,7 @@ See [references/scoring-rubric.md](references/scoring-rubric.md) for scoring met
 - Run `live-eval-runner.sh` for top 3 discriminator evals
 - Every live run bills an API key, never a login: [Eval Auth](#eval-auth--api-keys-never-a-login)
 - Agent routing: bounded Claude in-process/headless tests → `claude.subagent.cheap`;
-  visible or decision-grade Claude tests → `claude.judgment`; code tests → `codex.implement`; audits → Cursor
+  visible or decision-grade Claude tests → `claude.judgment`; code tests → `codex.implement`; audits → supported other-vendor reviewer under `/agent-routing`
 - Compare captured output against assertions
 - **Gate:** Live delta must be within 15% of static delta
 - Results stored in `evals/results/live-{date}.json` and `brain_store`'d
