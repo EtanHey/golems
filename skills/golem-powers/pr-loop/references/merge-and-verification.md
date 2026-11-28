@@ -258,7 +258,7 @@ one-at-a-time lock.
 > [!CAUTION]
 > HARD STOP AT THE FEATURE-BATCH GATE: IF ANY PR IN THE BATCH TOUCHES DAEMON, SOCKET, MCP, OR PROTOCOL CODE, COMPLETE REAL CLIENT RUNTIME VERIFICATION ON THE BATCH HEAD BEFORE THE BATCH IS RELEASED, INSTALLED, OR DECLARED DONE. MARKDOWN INTENT IS NOT ENOUGH.
 
-**When:** at the [feature-batch gate](#feature-batch-gate), not before every merge. A mid-batch daemon PR
+**When:** at the [feature-batch gate](#feature-batch-gate), not before every merge, except VoiceLayer daemon PRs (below). A mid-batch daemon PR
 merges on the size cadence and its real-client run is queued for the batch. A single-PR batch runs it
 before that PR ships.
 

@@ -51,7 +51,7 @@ Completion alone does not register a new check. Restarting the watcher starts
 a fresh quiet window. This bounds
 readiness to observed registrations; a check can still register after READY.
 Checks, workflow runs, workflow jobs, and legacy commit statuses are paginated
-with 100 rows per page. Only the latest check per app ID plus name plus workflow, and latest
+with 100 rows per page. Only the latest check per app ID plus name plus stable workflow ID (not display name), and latest
 legacy status per context, counts. Numeric IDs order queued reruns before they
 have start timestamps; timestamps break ties or order rows without IDs.
 Jobs are read for the latest run of each workflow; older check runs still undergo

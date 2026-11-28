@@ -745,12 +745,12 @@
       "assertions": [
         {
           "type": "outcome",
-          "name": "queues-runtime-for-batch-gate",
+          "name": "requires-voicelayer-artifact-before-merge",
           "description": "Requires voicelayer-verify.sh and the matching exact-head artifact before any VoiceLayer daemon merge; other daemon runtime work remains at the batch gate."
         },
         {
           "type": "negative",
-          "name": "no-per-pr-park",
+          "name": "no-admin-only-hook-reliance",
           "description": "Does not rely on the admin-only hook for normal merges; never bypasses or disables a refusing hook, and never merges a VoiceLayer daemon PR without its runtime artifact."
         }
       ]

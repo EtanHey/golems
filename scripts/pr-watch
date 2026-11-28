@@ -115,10 +115,11 @@ def read_checks(args, deadline):
     for run in runs:
         if (run.get('head_sha') != args.head or not isinstance(run.get('id'), int)
                 or not isinstance(run.get('check_suite_id'), int)
+                or not isinstance(run.get('workflow_id'), int)
                 or not isinstance(run.get('name'), str) or not run['name']):
             raise GhCommandError('missing or invalid workflow run identity from gh\n')
-        workflows[run.get('check_suite_id')] = run['name']
-        key = run.get('workflow_id') or run.get('name')
+        workflows[run.get('check_suite_id')] = (run['workflow_id'], run['name'])
+        key = run['workflow_id']
         if key not in latest_runs or run['id'] > latest_runs[key]['id']:
             latest_runs[key] = run
     for run in latest_runs.values():
@@ -132,14 +133,17 @@ def read_checks(args, deadline):
         for job in run_jobs:
             if not isinstance(job.get('id'), int):
                 raise GhCommandError('missing or invalid workflow job identity from gh\n')
-            job['workflowName'] = workflows[run.get('check_suite_id')]
+            job['workflow_id'], job['workflowName'] = workflows[run.get('check_suite_id')]
             jobs[job.get('id')] = job
     rows = []
     for check in checks:
         suite = check.get('check_suite') or {}
         if not isinstance(suite, dict):
             raise GhCommandError('missing or invalid check suite from gh\n')
-        check['workflowName'] = workflows.get(suite.get('id'), check.get('workflowName') or '')
+        identity = workflows.get(suite.get('id'))
+        if identity:
+            check['workflow_id'], check['workflowName'] = identity
+        check['workflowName'] = check.get('workflowName') or ''
         row = jobs.pop(check.get('id'), check)
         row['app'] = check.get('app') or {}
         rows.append(row)
@@ -149,13 +153,13 @@ def read_checks(args, deadline):
     return rows
 
 
-def read_required_checks(args, branch, deadline):
+def read_required_policy(args, branch, deadline, include_strict=True):
     if not isinstance(branch, str) or not branch:
         raise GhCommandError('missing or invalid PR base branch from gh\n')
     base = f'repos/{args.repo}'
     branch = quote(branch, safe='')
     rules = api_list(f'{base}/rules/branches/{branch}', None, deadline)
-    required = []
+    required, strict = [], False
     for rule in rules:
         if rule.get('type') == 'required_status_checks':
             params = rule.get('parameters')
@@ -163,9 +167,11 @@ def read_required_checks(args, branch, deadline):
             if not isinstance(rows, list):
                 raise GhCommandError('missing or invalid required status checks from gh\n')
             required.extend(rows)
+            strict = strict or params.get('strict_required_status_checks_policy') is True
     # Rulesets are authoritative when they declare contexts (owner contract).
     # Classic protection is a fallback only, not merged into a nonempty ruleset.
-    if not required:
+    # Strictness may also come from classic protection, without merging contexts.
+    if not required or (include_strict and not strict):
         protection = gh_json(['api', f'{base}/branches/{branch}/protection'],
                              timeout=max(.001, deadline - time.monotonic()), unprotected_ok=True)
         if not isinstance(protection, dict) or 'required_status_checks' not in protection:
@@ -175,8 +181,10 @@ def read_required_checks(args, branch, deadline):
             if (not isinstance(checks, dict) or not isinstance(checks.get('contexts'), list)
                     or not isinstance(checks.get('checks', []), list)):
                 raise GhCommandError('missing or invalid classic required checks from gh\n')
-            required.extend(dict(context=context) for context in checks['contexts'])
-            required.extend(checks.get('checks', []))
+            strict = strict or checks.get('strict') is True
+            if not required:
+                required.extend(dict(context=context) for context in checks['contexts'])
+                required.extend(checks.get('checks', []))
     normalized = set()
     for row in required:
         if not isinstance(row, dict) or not isinstance(row.get('context'), str) or not row['context']:
@@ -185,7 +193,12 @@ def read_required_checks(args, branch, deadline):
         if app is not None and (type(app) is not int or app < -1):
             raise GhCommandError('invalid required check app from gh\n')
         normalized.add((row['context'], app if app not in {None, -1} else None))
-    return sorted(normalized, key=lambda row: (row[0], row[1] or 0))
+    return sorted(normalized, key=lambda row: (row[0], row[1] or 0)), strict
+
+
+def read_required_checks(args, branch, deadline):
+    # The watcher needs contexts only; preflight also reads strictness for admin.
+    return read_required_policy(args, branch, deadline, include_strict=False)[0]
 
 
 def read_pr(args, remaining, checks=True, required_cache=None):
@@ -230,10 +243,11 @@ def latest_checks(checks):
         if not isinstance(app, dict):
             raise GhCommandError('missing or invalid check app from gh\n')
         if check.get('_kind') == 'workflow':
-            key = ('workflow', check.get('workflow_id') or check.get('workflowName'))
+            key = ('workflow', check.get('workflow_id'))
         else:
             key = ('status', name) if legacy else (
-                'check', app.get('id'), name, check.get('workflowName') or '')
+                'check', app.get('id'), name, check.get('workflow_id') or
+                ('suite', (check.get('check_suite') or {}).get('id')))
         # Run IDs order queued reruns correctly even before started_at exists.
         rank = (int(check.get('id') or 0),
                 check.get('created_at') or check.get('started_at') or check.get('startedAt') or '',
