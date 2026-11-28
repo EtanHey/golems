@@ -100,7 +100,8 @@ Push fixes, repeat until clean.
 ### 9. Merge
 
 ```bash
-gh pr merge <N> --squash
+~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>
+gh pr merge <N> --merge --match-head-commit <green head>
 git checkout master && git pull
 ```
 

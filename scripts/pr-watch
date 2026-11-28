@@ -163,6 +163,8 @@ def read_required_checks(args, branch, deadline):
             if not isinstance(rows, list):
                 raise GhCommandError('missing or invalid required status checks from gh\n')
             required.extend(rows)
+    # Rulesets are authoritative when they declare contexts (owner contract).
+    # Classic protection is a fallback only, not merged into a nonempty ruleset.
     if not required:
         protection = gh_json(['api', f'{base}/branches/{branch}/protection'],
                              timeout=max(.001, deadline - time.monotonic()), unprotected_ok=True)
@@ -241,6 +243,21 @@ def latest_checks(checks):
     return [check for _, check in latest.values()]
 
 
+def check_success(check):
+    """Only explicit success passes a required source (REST/GraphQL casing)."""
+    if 'context' in check or ('state' in check and 'status' not in check):
+        return str(check.get('state')).lower() == 'success'
+    return (str(check.get('status')).lower() == 'completed'
+            and str(check.get('conclusion')).lower() == 'success')
+
+
+def required_sources(checks, context, app_id):
+    """Latest per source, never compare check-run IDs with status IDs."""
+    return [check for check in latest_checks(checks) if check.get('_kind') != 'workflow'
+            and check.get('context', check.get('name')) == context
+            and (app_id is None or (check.get('app') or {}).get('id') == app_id)]
+
+
 def checks_verdict(data):
     checks = data.get('statusCheckRollup')
     if not isinstance(checks, list):
@@ -253,14 +270,9 @@ def checks_verdict(data):
     if any(result in RED for result in results):
         return 'failed'
     for context, app_id in data.get('requiredChecks', []):
-        matching = [check for check in latest if check.get('_kind') != 'workflow'
-                    and check.get('context', check.get('name')) == context
-                    and (app_id is None or (check.get('app') or {}).get('id') == app_id)]
-        newest = max(matching, key=lambda row: (int(row.get('id') or 0),
-                     row.get('created_at') or ''), default={})
-        if not (str(newest.get('status')).upper() == 'COMPLETED'
-                and str(newest.get('conclusion')).upper() == 'SUCCESS'
-                or str(newest.get('state')).upper() == 'SUCCESS'):
+        matching = required_sources(checks, context, app_id)
+        # Different apps/workflows and status contexts are independent evidence.
+        if not matching or not all(check_success(check) for check in matching):
             return 'pending'
     return 'green' if results and all(result in GREEN for result in results) else 'pending'
 

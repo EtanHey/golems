@@ -512,7 +512,8 @@ git push
 # Verify reviews are actually in before merging
 gh pr view <N> --json reviewDecision,comments
 
-gh pr merge <N> --merge --match-head-commit <green head> --delete-branch
+~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>
+gh pr merge <N> --merge --match-head-commit <green head>
 git checkout main && git pull
 ```
 

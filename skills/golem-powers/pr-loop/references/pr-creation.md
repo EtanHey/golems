@@ -35,7 +35,7 @@ Choose the endpoint before the loop below: [full stop](full-stop.md) overrides i
 8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
              ↳ Every comment/reply you POST ends with the signature line
 9. FIX       Address real bugs from review
-10. MERGE    scripts/merge-preflight <owner/repo> <N> --head <green head>
+10. MERGE    ~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>
              gh pr merge `<N>` --merge --match-head-commit `<green head>`
              ↳ No admin by default. See Merge Authority for the up-to-date-only exception.
              ↳ `--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.
@@ -51,8 +51,8 @@ Choose the endpoint before the loop below: [full stop](full-stop.md) overrides i
 > full permission to merge when they see something is really good. It's not GitHub's approval
 > you're waiting for, it's my approval, and it's stupid."*
 
-1. **Merge authority does not waive required checks.** Default: `gh pr merge <N> --merge --match-head-commit <green head>` after `scripts/merge-preflight <owner/repo> <N> --head <green head>` passes. Read the base branch's ruleset `required_status_checks`, not only the checks that happened to report. Use the latest run per name at the exact head SHA. SKIPPED, NEUTRAL, queued, pending, cancelled and missing required checks are NOT passed.
-2. **`--admin` is allowed only to skip the up-to-date rule**, and only when every required check is reported and green at that exact head. The merge line lists each required check and its SUCCESS result. Never use it for a review protection, failing suite or an absent run. After `gh pr ready`, wait for ready-triggered suites using the parent-owned watch and rerun preflight; draft skips do not count. Other protection blockers go to the lead with evidence.
+1. **Merge authority does not waive required checks.** Default: `gh pr merge <N> --merge --match-head-commit <green head>` after `~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>` passes. Read the base branch's ruleset `required_status_checks`, not only the checks that happened to report. Use the latest run per source (app/name/workflow for checks, context for statuses) at the exact head SHA; every surviving source for a required context must pass. SKIPPED, NEUTRAL, queued, pending, cancelled and missing required checks are NOT passed.
+2. **`--admin` is allowed only to skip the up-to-date rule**, and only when every required check is reported and green at that exact head. The DONE report carries the preflight OK lines and `ADMIN-ELIGIBLE: BEHIND only`; without that marker admin is not allowed. Never use it for a review protection, failing suite or an absent run. After `gh pr ready`, wait for ready-triggered suites using the parent-owned watch and rerun preflight; draft skips do not count. Other protection blockers go to the lead with evidence.
 3. **The review step above still happens** (independent reviewer ACCEPT per lane contract —
    rules 1–5). What is abolished is the *post-review* stop: once the lane's review is clean,
    MERGE. Do not wait for a human, GitHub, or a permission that already exists.

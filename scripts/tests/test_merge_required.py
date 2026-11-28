@@ -43,10 +43,6 @@ class RequiredCheckTests(unittest.TestCase):
         self.assertEqual(self.verdict([self.row(), dict(id=2, name='optional', status='completed', conclusion='skipped')]), 'green')
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class PreflightTests(unittest.TestCase):
     def test_fixture_states_and_head_confirmation(self):
         from contextlib import redirect_stdout
@@ -76,3 +72,92 @@ class PreflightTests(unittest.TestCase):
                 'read_required_checks': lambda *a: [('suite', None)],
                 'read_checks': lambda *a: [dict(id=1, name='suite', status='completed', conclusion='success')]}), redirect_stdout(StringIO()):
             self.assertEqual(preflight('owner/repo', 1, head), 1)
+
+
+# Distinct source identities deliberately use colliding names and unrelated IDs.
+def collision_cases():
+    skipped = dict(id=1, name='suite', status='completed', conclusion='skipped',
+                   app={'id': 7}, workflowName='first')
+    return {
+        'P1_workflows': [skipped, dict(skipped, id=2, conclusion='success', workflowName='second')],
+        'P2_apps': [skipped, dict(skipped, id=2, conclusion='success', app={'id': 8})],
+        'P3_status_namespace': [skipped, dict(id=999, context='suite', state='success')],
+    }
+
+
+class CollisionTests(unittest.TestCase):
+    def test_required_context_preserves_every_source(self):
+        for name, rows in collision_cases().items():
+            with self.subTest(case=name):
+                data = dict(requiredChecks=[('suite', None)], statusCheckRollup=rows)
+                self.assertNotEqual(WATCH['checks_verdict'](data), 'green')
+
+    def test_preflight_rejects_source_collisions(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from unittest.mock import patch
+        preflight = runpy.run_path(str(ROOT / 'scripts/merge-preflight'))['preflight']
+        watch = preflight.__globals__['watch']
+        head = 'a' * 40
+        pr = dict(headRefOid=head, baseRefName='master', state='OPEN', isDraft=False,
+                  mergeStateStatus='CLEAN')
+        for name, rows in collision_cases().items():
+            with self.subTest(case=name), patch.dict(watch, {
+                    'gh_json': lambda *a, **kw: pr,
+                    'read_required_checks': lambda *a: [('suite', None)],
+                    'read_checks': lambda *a: rows}), redirect_stdout(StringIO()):
+                self.assertEqual(preflight('owner/repo', 1, head), 1)
+
+    def test_latest_success_per_source_and_all_sources_green(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from unittest.mock import patch
+        rows = collision_cases()['P1_workflows']
+        rows.append(dict(rows[0], id=3, conclusion='success'))
+        data = dict(requiredChecks=[('suite', None)], statusCheckRollup=rows)
+        self.assertEqual(WATCH['checks_verdict'](data), 'green')
+        preflight = runpy.run_path(str(ROOT / 'scripts/merge-preflight'))['preflight']
+        head = 'a' * 40
+        pr = dict(headRefOid=head, baseRefName='master', state='OPEN', isDraft=False,
+                  mergeStateStatus='CLEAN')
+        with patch.dict(preflight.__globals__['watch'], {
+                'gh_json': lambda *a, **kw: pr,
+                'read_required_checks': lambda *a: [('suite', None)],
+                'read_checks': lambda *a: rows}), redirect_stdout(StringIO()):
+            self.assertEqual(preflight('owner/repo', 1, head), 0)
+
+
+class AdminReceiptTests(unittest.TestCase):
+    def test_admin_marker_requires_success_and_behind(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from unittest.mock import patch
+        preflight = runpy.run_path(str(ROOT / 'scripts/merge-preflight'))['preflight']
+        watch = preflight.__globals__['watch']
+        head = 'a' * 40
+        for state in ['BEHIND', 'BLOCKED', 'CLEAN', 'UNKNOWN']:
+            for conclusion in ['SUCCESS', 'SKIPPED']:
+                pr = dict(headRefOid=head, baseRefName='master', state='OPEN', isDraft=False,
+                          mergeStateStatus=state)
+                rows = [dict(id=1, name='suite', status='COMPLETED', conclusion=conclusion)]
+                output = StringIO()
+                with self.subTest(state=state, conclusion=conclusion), patch.dict(watch, {
+                        'gh_json': lambda *a, **kw: pr,
+                        'read_required_checks': lambda *a: [('suite', None)],
+                        'read_checks': lambda *a: rows}), redirect_stdout(output):
+                    rc = preflight('owner/repo', 1, head)
+                self.assertEqual(rc, 0 if conclusion == 'SUCCESS' else 1)
+                eligible = conclusion == 'SUCCESS' and state == 'BEHIND'
+                self.assertEqual('ADMIN-ELIGIBLE: BEHIND only' in output.getvalue(), eligible)
+                self.assertEqual('admin not allowed' in output.getvalue(), not eligible)
+
+    def test_legacy_status_casing_is_consistent(self):
+        for state in ['success', 'SUCCESS']:
+            check = dict(id=1, context='suite', state=state)
+            self.assertTrue(WATCH['check_success'](check))
+            self.assertEqual(WATCH['checks_verdict'](dict(
+                statusCheckRollup=[check], requiredChecks=[('suite', None)])), 'green')
+
+
+if __name__ == '__main__':
+    unittest.main()

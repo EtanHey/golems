@@ -15,7 +15,7 @@
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
 | Trigger Bugbot | `gh pr comment <N> --body "bugbot run"` | **Opt-in, L or very important/core-risk PRs only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Never wait or block; record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity → no entry |
 | Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Fetch once on a wake that shows a change — never in a poll loop |
-| Merge | `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` | See worktree note below |
+| Merge | `~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>` then `gh pr merge <N> --merge --match-head-commit <green head>` | See worktree note below |
 
 ## Critical Gaps
 
@@ -31,7 +31,7 @@
 ## Worktree Merge Mechanics
 
 When Codex is operating inside a linked worktree, never merge from that active
-worktree. Move to the original checkout, run `gh pr merge`, verify the remote
+worktree. Move to the original checkout, run `~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>` before the pinned-head merge, verify the remote
 merge SHA, delete the remote branch, then remove the worktree so cleanup does
 not delete the session underneath you. End the merge comment or DONE report with
 the [CLEANUP RECEIPT](../references/merge-and-verification.md#cleanup-receipt).
