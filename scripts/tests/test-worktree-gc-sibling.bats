@@ -22,7 +22,8 @@ sibling_fixture() {
   printf 'docs.local/\n' >> "$repo/.git/info/exclude"
   mkdir -p "$worktree/docs.local"
   printf proof > "$worktree/docs.local/note"
-  run "$WORKTREE_GC"
+  # Dry run now enforces the idle window too (#1372); this case tests eligibility, not idleness.
+  run "$WORKTREE_GC" --idle-hours 0
   [ "$status" -eq 0 ]
   [[ "$output" == *" · REMOVE · "* ]] || false
   [ -f "$worktree/fixture.txt" ]

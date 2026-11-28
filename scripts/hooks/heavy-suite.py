@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """Bound concurrency of opted-in heavy commands with a RAM start guard."""
+import sys
+
+# Bare callers must also preserve the immutable release payload.
+sys.dont_write_bytecode = True
+
 import argparse
 import fcntl
 import hashlib
@@ -12,7 +17,6 @@ from pathlib import Path
 from threading import Event
 import signal
 import subprocess
-import sys
 import time
 import uuid
 
