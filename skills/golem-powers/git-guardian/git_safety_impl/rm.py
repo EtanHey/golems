@@ -14,7 +14,7 @@ from . import shell_parse, branch_move, move_history
 from .trash import trash_move, literal_trash_syntax
 from .move_glob import move_sources_reason
 from .paths import (
-    _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
+    _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason, _rmdir_temp_root_reason,
     _rm_exact_target_reason, _rm_allows_ignored_directory,
 )
 
@@ -890,7 +890,7 @@ def _rm_reason_in_words(
         return api["_rm_target_reason"](destination, cwd, argument_variables, protected_cwd, follow_symlinks=True)
 
     if command_name != "rm":
-        return branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables, depth=_depth, git_environment=variables)
+        return _rmdir_temp_root_reason(words, position, cwd, argument_variables) or branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables, depth=_depth, git_environment=variables)
 
     arguments = words[position + 1:]
     flags = [word for word in arguments if word.startswith("-") and word != "-"]

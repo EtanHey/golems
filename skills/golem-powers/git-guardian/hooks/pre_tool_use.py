@@ -499,6 +499,8 @@ def block(reason):
             operation = name
             break
     result_reason = f"Blocked: this git command can destroy work ({operation}). Use a safe alternative, or ask the lead."
+    if 'cannot be resolved safely' in (reason or ''):
+        result_reason += ' Name the path literally, e.g. rm -r "$TMPDIR/<dir>".'
     if 'update-ref --stdin input is not in the command' in (reason or ''):
         result_reason += (' git update-ref --stdin reads its input from somewhere this command does not show, '
                           'so the guard cannot tell which branches it moves; put the lines in a heredoc or printf.')

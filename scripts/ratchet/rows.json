@@ -263,6 +263,18 @@
       "bug_fixture": "2f4a3f8e232ae908bc6a0516b102001b8d946e3c4c9726f3b07251ca027f7688",
       "fix_fixture": "5b01f0ceda336433b74a74283513a30913967fe2cf9a7f6d1ea124f3a4ef9cda",
       "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
+    },
+    {
+      "id": "temp-root-refusal",
+      "metric": "real source hook: temp-root identity and case/alias refusal, literal-child controls (not installed proof)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "f25ed72f9a504e30f275607d64b65c6807fd5468",
+      "fix_sha": "05a9dd6d841c5b56dad371eaa6a8eeba9294774f",
+      "command": "\"${PYTHON_BIN:-python3}\" -m pytest -q -p no:cacheprovider skills/golem-powers/git-guardian/hooks/tests/test_temp_roots.py -k \"temp_root_refused or physical_case_and_symlink_alias or literal_child_unchanged\" --basetemp=docs.local/ratchet-temp-root-refusal",
+      "timeout_s": 60
     }
   ]
 }

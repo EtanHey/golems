@@ -359,6 +359,8 @@ def _rm_target_reason(
     # initial/current checkout. Resolve aliases for identity and bound descendant
     # probing to the container; keep the nested-fixture breadth boundary.
     physical = os.path.realpath(resolved)
+    if _is_temp_root(physical, variables):
+        return "rm targeting temp root; name a child path instead"
     # rm/default find unlink the link itself; directory-traversing tools must
     # evaluate its physical target even without a trailing slash.
     follows_target = follow_symlinks or not complete or not os.path.islink(resolved) or prefix.endswith(("/", "/."))
@@ -466,3 +468,26 @@ def _rm_allows_ignored_directory(segments):
     return not any(
         word in {'for', 'while', 'until', 'select', 'repeat'}
         for words, _before, _after in segments for word in words)
+
+
+def _is_temp_root(path, variables):
+    """Root identity, including APFS case aliases and macOS temp firmlinks."""
+    roots = ('/tmp', '/private/tmp', '/var/tmp', '/private/var/tmp',
+             os.environ.get('TMPDIR'), variables.get('TMPDIR'))
+    if any(root and os.path.isabs(root) and _same_path(path, root) for root in roots):
+        return True
+    return bool(re.fullmatch(r'/(?:private/)?var/folders/[^/]+/[^/]+/t',
+                             os.path.realpath(path).casefold()))
+
+
+def _rmdir_temp_root_reason(words, position, cwd, variables):
+    """Keep rmdir's existing child policy; add only the temp-root refusal."""
+    if os.path.basename(words[position]) != 'rmdir':
+        return None
+    for target in words[position + 1:]:
+        expanded, complete = _expand_known_vars(target, variables, _SHELL_VAR_RE)
+        if complete and expanded and not expanded.startswith('-'):
+            path = os.path.realpath(os.path.join(cwd, expanded))
+            if _is_temp_root(path, variables):
+                return 'rmdir targeting temp root; name a child path instead'
+    return None
