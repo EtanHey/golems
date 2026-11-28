@@ -9,7 +9,7 @@ Default: prepare a grounded prompt for Gemini Deep Research at gemini.google.com
 
 Triggers on: gemini research, Gemini Deep Research, deep research, compare research options.
 
-> **Grounding default: attach files, Drive source off.** Agents prepare ONE folder holding exactly the curated grounding files with unique names. The hand-off names that folder and the files to attach; the owner attaches them when he starts the run with Drive source off. Drive grounding is optional, never the default. Its connected Drive workspace supports title SEARCH only: it cannot list a folder or open a document by link. Native Google Docs do not fix this limitation.
+> **Grounding default: attach `.txt` files, Drive source off, ONE hand-off.** Agents prepare ONE folder holding exactly the curated grounding files as `.txt`, with unique names. The owner gets ONE hand-off block (below) naming that folder and the files; the owner attaches them when he starts the run with Drive source off. Never offer the owner a second route. Drive's connected workspace supports title SEARCH only: it cannot list a folder or open a document by link, and native Google Docs do not fix that.
 
 Measured 2026-11-13/14: four runs read none of the grounding files, with both raw
 Markdown and converted Docs. A Deep Research probe correctly quoted one Doc's
@@ -56,18 +56,25 @@ Done condition: no research prompt leaves this skill until ONE of these is true:
    step 1, write the exact web-only line and separate reason,
    and go straight to the emit gate below. The grounding and START/EDIT gates
    still apply.
-3. Project-grounded: emit the owner hand-off block below, filled in; the owner
-   attaches the files when he starts the run with Drive source off.
+3. Project-grounded: emit the ONE owner hand-off block below, filled in, and
+   nothing else for the owner to choose between; the owner attaches the files when
+   he starts the run with Drive source off.
    Draft the prompt from the receipt's exact file names. While
    preparation runs or is blocked, tell Etan the prompt follows the receipt; never
    emit it before.
 
 Preparation is the agent's job; do not emit a prompt that asks Etan to collect files.
 
+**Grounding files are `.txt`** (Etan, 2026-11-27: "md files arent great for gemini").
+The author converts or copies each grounding file to `.txt` in the prepared folder
+(`R01-01-<name>.md` → `R01-01-<name>.txt`, same content). Every exact name uses the
+`.txt` name: the `# Grounding` list and admission-question table, the private
+`admission-key` `document` fields, the manifest and the hand-off.
+
 ## Owner hand-off block — emit it, filled in, in this order
 
-This block is the default hand-off for every project-grounded run (attach route); the
-optional Drive route uses its own block below. Etan fires every step (fire = Etan);
+This is the ONLY hand-off the owner receives for a project-grounded run (Etan,
+2026-11-27: "just give me one and the files"). Etan fires every step (fire = Etan);
 you write the probe text and you judge GO. Fill every `<...>`; keep the order and wording.
 You may put the researcher text inline in the hand-off instead of a path; Deep Research cannot open a local path.
 
@@ -85,7 +92,7 @@ If <author seat> replies NO-GO, or a later read-check row says a file is not rea
 - Do not paste the prompt (if it was already pasted, that run's answer is discarded).
 - First, in the SAME chat: attach the same files again, wait for every chip, and send the probe again.
 - Still NO-GO: open a NEW chat, Drive OFF, attach the files first, wait for every chip, and send the probe again.
-- Still NO-GO: <author seat> sends a NEW hand-off block (untested fallback: other file type); follow that one.
+- Still NO-GO: stop and tell <author seat>.
 ```
 
 Probe text (one per hand-off, naming every file; never put the key's lines in it):
@@ -110,40 +117,19 @@ Order follows the R01 evidence: a second attach in the same chat is what worked;
 1. Do not paste the researcher prompt; if it was already pasted, discard that run's answer unread.
 2. Re-attach the same files in the SAME chat, wait for every chip, and send the probe again.
 3. Still NO-GO: a NEW chat, Drive off, the same files attached first, the probe again.
-4. Still NO-GO, **untested fallback** (R01 failed its first attach with `.txt` too, so this is not known to help): switch the file type. YOU (the author) re-prepare; the owner never renames anything. Replace each file in the prepared folder with a copy of the same content and unique stem in the other type (for example `R01-01-<name>.md` → `R01-01-<name>.txt`). Then update every exact name to the new name: the `# Grounding` list and admission-question table, the private `admission-key` `document` fields, and the manifest. Re-run `prompt-preflight.mjs --emit --attached <prepared folder>` (it fails until folder, grounding and key name the same files), and send a new hand-off block with the new names, the new probe and the new prompt path.
+4. Still NO-GO: the owner stops and tells you. You investigate (file sizes, names, content) and fix the prepared set yourself; the owner never renames anything. Any renamed file means re-running `prompt-preflight.mjs --emit --attached <prepared folder>` and sending a new hand-off block.
 5. A run whose files became readable only after a re-attach (same chat or new) counts only if its admission table later passes `--harvest-check` against the private key. Otherwise it is a fabricated read: discard it.
 
 **Web-only research has no files:** its hand-off has no attach, probe or GO steps. Open a new
 Deep Research chat, paste the emitted prompt, and send the plan back for START / EDIT.
 
-### Optional Drive route — exact titles and a probe first
+### Drive route — agent-only note, never offered to the owner
 
-If Drive is used, verify every grounding document's title is unique across the
-whole Drive, with no duplicate or look-alike titles. Name each document by its
-exact title in the prompt, never by folder or link. Expect title search to miss
-documents; a connected source and an author-side Drive read prove no researcher access.
-
-The Drive route has its own short hand-off; nothing is attached:
-
-```text
-Drive titles (<N>, each unique across the whole Drive): "<exact title 1>", "<exact title 2>", ...
-1. Open a NEW Gemini Deep Research chat. Turn the Drive source ON. Attach nothing.
-2. Paste this probe and send it:
-   Before anything else: search Drive for each exact title below and reply only with a table
-   `title | first line`, copying the document's exact first line character for character.
-   If you cannot find or open a document, write NOT FOUND in its row. Do not research, summarise or plan.
-   - "<exact title 1>"
-   - "<exact title 2>"
-3. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
-4. Only after <author seat> replies GO: open <path to R{NN}-research.md>, copy its full text, and paste that text (not the path) in the SAME chat.
-5. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
-If <author seat> replies NO-GO: do not paste the prompt. <author seat> either fixes the titles and sends a
-new Drive hand-off, or switches to the attach route and sends the owner hand-off block above.
-```
-
-GO uses the same rule against the author key. On NO-GO, YOU fix duplicate or look-alike
-titles, or switch to the attach route (re-emit with the attach-route grounding and
-`--attached`); never fire the real prompt on an unverified set.
+Optional; not offered to the owner unless he asks for it. If he does: every title is
+unique across the whole Drive (no look-alikes), the prompt names exact titles, the
+same first-line probe runs first with Drive ON and nothing attached, and GO uses the
+same author key. Expect title search to miss documents; on NO-GO, go back to the
+attach route.
 
 ## Curated grounding set, admission stop, provenance
 
@@ -161,7 +147,7 @@ titles, or switch to the attach route (re-emit with the attach-route grounding a
 
 ## Default workflow: Gemini Deep Research
 
-Keep the curated provenance set in `Brain Drive/03_RESEARCH/Active/<project>/R{NN}-grounding/`; name the prepared folder and its exact file names in the hand-off so the owner attaches that set when starting the run with Drive off. Do not use the shared `<project>/context/` corpus. Optional Drive grounding follows the exact-title and probe rules above. Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
+Keep the curated provenance set in `Brain Drive/03_RESEARCH/Active/<project>/R{NN}-grounding/`; name the prepared folder and its exact file names in the hand-off so the owner attaches that set when starting the run with Drive off. Do not use the shared `<project>/context/` corpus. Drive grounding is agent-only (note above). Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
 
 **Prompt template:** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
 

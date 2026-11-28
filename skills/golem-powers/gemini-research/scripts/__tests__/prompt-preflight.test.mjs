@@ -15,16 +15,13 @@ const filled = (template.split('For explicitly authorized web-only research,')[0
   .replace(/<[^>]+>/g, 'Example statement').replaceAll('- [ ]', '- [x]');
 const legacy = '# Research goal\nCompare indexing.\n# Grounding\n- "Overview"\n# Scope\nLocal.\n# Desired output\nA table.\n';
 
-test('emitted template defaults to supplied files with Drive off and bounds optional title search', () => {
+// Etan 2026-11-27: "just give me one" — the text the owner pastes carries only the attach route.
+test('emitted template defaults to supplied files with Drive off and offers no second (Drive) route', () => {
   const command = [new URL('../prompt-preflight.mjs', import.meta.url).pathname, '--emit', '-'];
   const result = spawnSync(process.execPath, command, { input: filled, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Files supplied with this run; Drive source off/);
-  assert.match(result.stdout, /exact title/);
-  assert.match(result.stdout, /unique across the whole Drive/);
-  assert.match(result.stdout, /search may miss documents/);
-  assert.match(result.stdout, /first line/);
-  assert.match(result.stdout, /author key/);
+  assert.doesNotMatch(result.stdout, /Optional Drive route|exact title|unique across the whole Drive/);
   assert.doesNotMatch(result.stdout, /via the connected Drive workspace; never ask for attachments?/i);
   assert.doesNotMatch(result.stdout, /all in this research's own curated folder/);
   assert.ok(!result.stdout.includes('Private verified value'));
@@ -44,6 +41,17 @@ test('grounding guidance agrees on attachment default and optional Drive search 
     assert.match(text, /author key/, skill);
     assert.doesNotMatch(text, /Gemini reads them through its connected Drive workspace|his connected Drive workspace pulls named documents itself|Etan never attaches anything/, skill);
   }
+});
+
+test('owner gets exactly ONE hand-off block (attach route) and .txt grounding files by default', () => {
+  const text = readFileSync(new URL('../../SKILL.md', import.meta.url), 'utf8');
+  const fences = [...text.matchAll(/```text\n([\s\S]*?)```/g)].map(m => m[1]);
+  const handoffs = fences.filter(f => /Open a NEW Gemini Deep Research chat/.test(f));
+  assert.equal(handoffs.length, 1, 'one owner hand-off block');
+  assert.match(handoffs[0], /Drive source OFF/);
+  assert.doesNotMatch(handoffs[0], /Drive source ON|other file type/);
+  assert.match(text, /`\.txt`/);
+  assert.doesNotMatch(text, /switch the file type/);
 });
 
 test('RED: old gate accepts the R02-style omission; new gate rejects it', () => {

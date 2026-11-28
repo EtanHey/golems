@@ -1,0 +1,50 @@
+{
+ "skill": "gemini-research",
+ "cases": [
+  {
+   "id": "P1-qa-video-receipt",
+   "category": "positive",
+   "prompt": "You are the author seat (seat name: qavideo-lead) for qa-video R02. Prepare the Deep Research hand-off for 'cheapest reliable frame-reading pipeline for /qa-video' from this receipt. The researcher prompt is already emitted at /work/research/qa-video/R02-research.md.\n\nLifecycle preparation receipt:\n```\nprepared folder: /work/research/qa-video/R02-grounding/\nfiles (3):\n  R02-01-verified-findings.md  first line: # R02-01: Verified Findings and Struck Claims\n  R02-02-run-costs.md          first line: # R02-02: Real /qa-video Run Costs\n  R02-03-pipeline-spec.md      first line: # R02-03: Current /qa-video Pipeline\nmanifest: 00-GROUNDING-MANIFEST.md (sha256 listed per file)\n```\n\nWrite exactly what you send to Etan, the owner, who fires the run himself in gemini.google.com. Do not run any tools; just write it."
+  },
+  {
+   "id": "P2-voicelayer-receipt",
+   "category": "positive",
+   "prompt": "You are the author seat (seat name: voicelayer-lead) for VoiceLayer R04. Prepare the Deep Research hand-off for 'which local TTS engine should be the default on the M1' from this receipt. The researcher prompt is already emitted at /work/research/voicelayer/R04-research.md.\n\nLifecycle preparation receipt:\n```\nprepared folder: /work/research/voicelayer/R04-grounding/\nfiles (2):\n  R04-01-tts-latency-bench.md   first line: # R04-01: VoiceLayer TTS First-Audio Latency Bench (2026-11)\n  R04-02-current-config.md      first line: # R04-02: VoiceLayer Current Speech Config\nmanifest: 00-GROUNDING-MANIFEST.md\nDrive provenance copy: Brain Drive/03_RESEARCH/Active/voicelayer/R04-grounding/ (titles unique)\n```\n\nWrite exactly what you send to Etan, the owner, who fires the run himself in gemini.google.com. Do not run any tools; just write it."
+  },
+  {
+   "id": "C1-web-only",
+   "category": "control",
+   "prompt": "You are the author seat (seat name: research-lead). Etan says: 'research which open-source vector databases support on-disk HNSW with under 1 GB RAM for 10M vectors; no project state needed, this is pure web research.' The researcher prompt is already emitted at /work/research/general/R09-research.md. Write exactly what you send to Etan, the owner, who fires the run himself in gemini.google.com. Do not run any tools; just write it."
+  }
+ ],
+ "assertions": {
+  "positive": [
+   {
+    "id": "A1-one-handoff",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 50,
+    "claim": "The message to the owner contains exactly ONE hand-off route: the attach route (new chat, Drive source off, attach the files, probe). It does not offer, describe or include a second route or alternative block for the owner (for example a Drive-source-ON route with Drive titles, or an 'optional Drive route' section), and does not ask the owner to choose between routes."
+   },
+   {
+    "id": "A2-txt-files",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 50,
+    "claim": "The files the owner is told to attach (and the file names in the probe) are .txt files, e.g. R02-01-verified-findings.txt rather than R02-01-verified-findings.md; the owner is never told to attach .md files. Stating that the author converted or copied the receipt's .md files to .txt counts; telling the owner to rename or convert files himself does not."
+   }
+  ],
+  "control": [
+   {
+    "id": "C1-web-only-handoff",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 100,
+    "claim": "The message treats the run as web-only: it gives no files to attach, no first-line probe and no GO step; the owner opens a new Deep Research chat, pastes the prompt text, and sends the generated plan back for START / EDIT."
+   }
+  ]
+ }
+}

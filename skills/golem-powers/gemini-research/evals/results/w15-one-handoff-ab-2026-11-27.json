@@ -1,0 +1,101 @@
+{
+ "eval": "w15 gemini-research one owner hand-off + .txt grounding",
+ "date": "2026-11-27",
+ "harness": "skill-creator recordSmoke + rejudgeSpec via evals/w15-one-handoff/run.mjs; each arm = SKILL.md + references/prompt-template.md; run on the M4",
+ "auth": "api-key (etanface capped key file)",
+ "tools": "none",
+ "model": "claude-sonnet-5-5",
+ "effort_requested": "medium",
+ "judge": "claude-opus-5-5 / high (pinned)",
+ "red_base": "e0ea3fd5a5cafb51fd70e5ccf23a296c80c60149",
+ "green_head": "5b01c63f497050b04b8462d3408e9559e1a0bfb9",
+ "skill_bundle_sha256": {
+  "RED": "8915f43a3a9b1198f389e00446e0d76f6948c8e7f136d39a8104e90538a1f5d6",
+  "GREEN": "18a8f41c181328ae801aff918ad9d841864ba9f2d54293331421e5e28293b5c9"
+ },
+ "models_observed": "every leg modelUsage key claude-sonnet-5-5; every judge claude-opus-5-5",
+ "summary": {
+  "P1-qa-video-receipt | RED(master)": "3/6",
+  "P1-qa-video-receipt | GREEN(branch)": "5/6",
+  "P2-voicelayer-receipt | RED(master)": "3/6",
+  "P2-voicelayer-receipt | GREEN(branch)": "5/6",
+  "C1-web-only | RED(master)": "3/3",
+  "C1-web-only | GREEN(branch)": "3/3"
+ },
+ "pass_by_rep": {
+  "P1-qa-video-receipt": {
+   "RED": {
+    "A1-one-handoff": [
+     true,
+     true,
+     true
+    ],
+    "A2-txt-files": [
+     false,
+     false,
+     false
+    ]
+   },
+   "GREEN": {
+    "A1-one-handoff": [
+     true,
+     true,
+     true
+    ],
+    "A2-txt-files": [
+     true,
+     true,
+     false
+    ]
+   }
+  },
+  "P2-voicelayer-receipt": {
+   "RED": {
+    "A1-one-handoff": [
+     true,
+     true,
+     true
+    ],
+    "A2-txt-files": [
+     false,
+     false,
+     false
+    ]
+   },
+   "GREEN": {
+    "A1-one-handoff": [
+     true,
+     true,
+     true
+    ],
+    "A2-txt-files": [
+     false,
+     true,
+     true
+    ]
+   }
+  },
+  "C1-web-only": {
+   "RED": {
+    "C1-web-only-handoff": [
+     true,
+     true,
+     true
+    ]
+   },
+   "GREEN": {
+    "C1-web-only-handoff": [
+     true,
+     true,
+     true
+    ]
+   }
+  }
+ },
+ "usd_list_total": 0.8121,
+ "notes": [
+  "A1 (one hand-off) passed 6/6 on RED too: with no Drive ask, master text already led to the attach block alone. A1 is a non-regression row here, not the measured delta.",
+  "A2 (.txt) RED 0/6 -> GREEN 4/6. Both GREEN misses named .txt files for the owner and in the probe, but said the .md->.txt copy was not yet done because the eval allowed no tools, and left it to 'someone'/'you'. The strict judge failed them; verdicts kept as judged.",
+  "Control (web-only) 3/3 both arms."
+ ]
+}

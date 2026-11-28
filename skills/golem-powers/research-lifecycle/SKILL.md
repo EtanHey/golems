@@ -241,7 +241,7 @@ The local corpus is the source to push. Drive retains the provenance mirror, so 
 
 ## CURATED GROUNDING FOLDER — one per research
 
-Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. Agents prepare ONE folder holding exactly the curated grounding files with unique
+Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. Agents prepare ONE folder holding exactly the curated grounding files as `.txt`, with unique
 names; the owner attaches them when he starts the run with Drive source off.
 The folder is a provenance record,
 not a Deep Research access route. Its connected Drive workspace offers title SEARCH
@@ -250,7 +250,7 @@ fix this. If Drive is explicitly used, every title must be unique across the who
 Drive with no look-alikes or duplicates, and the prompt names each exact title.
 Expect search to miss documents. The hand-off itself (attach order, the probe for each
 file's first line checked against the author key, GO and recovery) is `/gemini-research`'s owner
-hand-off block (attach route, the default) or its Drive-route block; do not restate it here. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
+hand-off block, the ONE hand-off the owner gets (its Drive route is an agent-only note, never offered to the owner); do not restate it here. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
 
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
 
