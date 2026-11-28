@@ -40,12 +40,18 @@ state `sheets × estimated price per sheet = estimated dollars`. Use the selecte
 estimate including retries; the script's default planning allowance is **$0.10 per sheet including
 one retry**, not a provider tariff or guaranteed bill. Supply `--price-per-sheet-usd` to
 visual-batch.py or direct helper calls when a different allowance is justified. CLI session usage
-may consume subscription limits or incur billing; do not call it free. **Above about $5, STOP and
-state the cost before reading**; obtain explicit spend authorization or reduce scope. Never split
-batches or lower the allowance to evade admission. The scripted route defaults to a $5 ceiling. A larger run requires a lead's explicit
-authorization, recorded with `reader-policy.py admit <workdir> --authorized-usd 7
---authorized-by <lead>` (also accepted by `plan`). Agents never self-authorize. The recorded
-ceiling applies to every read and survives re-admission; changing it requires both flags again.
+may consume subscription limits or incur billing; do not call it free. The scripted route defaults
+to a $5 ceiling. Above $5, hold and state the cost unless a lead-authorized ceiling is recorded.
+Never split batches or lower the allowance to evade admission.
+
+The flags record an **attestation that the script cannot verify**, not authenticated lead approval.
+Pass them only when the brief quotes the lead's explicit dollar amount, with `--authorized-by`
+naming that lead; otherwise hold. For example, only for a brief quoting a $7 authorization:
+`reader-policy.py admit <workdir> --authorized-usd 7 --authorized-by <lead>`.
+The recorded ceiling applies to every read and survives re-admission within that run; changing it
+requires both flags again. **Re-plan clears the authorization. Record it after `default.sh plan`**;
+that wrapper does not forward authorization flags. Direct `reader-policy.py plan` accepts both
+flags to record a fresh attestation for its new run.
 
 **Zero valid visual reads means STOP: "no frames were read" (no frames read). No QA verdict,
 PASS, INCONCLUSIVE or completed audit is permitted.** Return TOOLING FAILURE / NEEDS_READERS

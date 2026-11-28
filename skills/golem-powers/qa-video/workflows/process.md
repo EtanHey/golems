@@ -181,7 +181,11 @@ is `DENSE_MAX_GB=5` by default; see provenance.md for retention controls.
 
 **Admit before dispatch:** `default.sh plan` starts the current run ID. After extraction run
 `python3 "$SCRIPTS/reader-policy.py" admit "$MEDIADIR"` to count the entire dense/index.tsv,
-state sheets × price and write visual/cost-admission.json. Above $5 STOP. Every helper/delegate
+state sheets × price and write visual/cost-admission.json. Above $5 STOP unless a lead-authorized
+ceiling is recorded (SKILL.md cost section). The flags record an attestation the script cannot
+verify: pass --authorized-usd only when the brief quotes the lead's explicit dollar amount, with
+--authorized-by naming that lead; otherwise hold. Re-plan clears the authorization; record it
+after default.sh plan. Every helper/delegate
 receives `--admission "$MEDIADIR/visual/cost-admission.json"`; no admission means no reader.
 A successful pointer read cannot replace gathering. If all gatherers fail, STOP with
 "no frames were read", no QA verdict; retain transcript evidence notes only.

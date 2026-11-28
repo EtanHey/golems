@@ -53,7 +53,11 @@ def test_authorized_ceiling_refuses_excess(tmp_path):
     *[['--authorized-usd', value, '--authorized-by', 'lead'] for value in ['0', '-1', 'nan', 'inf']],
 ])
 def test_invalid_authorization_fails_closed(tmp_path, flags):
-    assert admit(tmp_path, 1, *flags).returncode != 0
+    result = admit(tmp_path, 1, *flags)
+    assert result.returncode == 3, result.stderr
+    assert 'COST_HOLD: positive finite authorized-usd' in result.stderr
+    path = tmp_path / 'visual/cost-admission.json'
+    assert not path.exists() or json.loads(path.read_text())['status'] != 'ADMITTED'
 
 
 @pytest.mark.parametrize('patch', [
@@ -78,3 +82,28 @@ def test_plan_before_extraction_records_authorization(tmp_path):
     row = json.loads((tmp_path / 'visual/cost-admission.json').read_text())
     assert row['status'] == 'PENDING' and row['authorized_usd'] == 7
     assert admit(tmp_path).returncode == 0
+
+
+@pytest.mark.parametrize('patch', [
+    {'estimated_usd': 1}, {'price_per_sheet_usd': 1},
+    *[{'price_per_sheet_usd': value} for value in [0, -1, float('nan'), float('inf'), True, '0.1']],
+])
+def test_validate_recomputes_run_estimate(tmp_path, patch):
+    assert admit(tmp_path, 52, '--authorized-usd', '7', '--authorized-by', 'lead').returncode == 0
+    path = tmp_path / 'visual/cost-admission.json'
+    row = json.loads(path.read_text())
+    row.update(patch)
+    path.write_text(json.dumps(row))
+    with pytest.raises(ValueError, match='COST_HOLD'):
+        policy.validate(path, [])
+
+
+def test_replan_clears_prior_authorization(tmp_path):
+    assert admit(tmp_path, 52, '--authorized-usd', '7', '--authorized-by', 'lead').returncode == 0
+    old = json.loads((tmp_path / 'visual/run.json').read_text())
+    result = admit(tmp_path, action='plan')
+    assert result.returncode == 3 and 'exceeds $5' in result.stderr
+    row = json.loads((tmp_path / 'visual/cost-admission.json').read_text())
+    assert row['run_id'] != old['run_id']
+    assert 'authorized_usd' not in row and 'authorized_by' not in row
+    assert row['status'] == 'COST_HOLD'

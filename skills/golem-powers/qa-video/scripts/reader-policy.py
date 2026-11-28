@@ -100,6 +100,12 @@ def validate(admission, images):
     if row.get('status') != 'ADMITTED' or row.get('run_id') != run.get('run_id'):
         raise ValueError('COST_ADMISSION_REQUIRED: missing, held or stale run admission')
     ceiling = authorization(row)
+    price = row['price_per_sheet_usd']
+    if type(price) not in (int, float) or not math.isfinite(price) or price <= 0:
+        raise ValueError('COST_HOLD: positive finite price-per-sheet-usd required')
+    estimate = round(len(row['sheets']) * price, 6)
+    if not math.isfinite(estimate) or row['estimated_usd'] != estimate:
+        raise ValueError('COST_HOLD: recorded estimate does not match sheet count times price')
     if not 0 <= row['estimated_usd'] <= ceiling:
         if ceiling == 5:
             raise ValueError('COST_HOLD: run estimate exceeds $5')

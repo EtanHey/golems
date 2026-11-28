@@ -21,7 +21,10 @@ Declare mode first: qa (default for UI bugs), debrief, or review. QA retains man
 Not the default /qa-video route: by default one `claude.judgment` judge child gathers (../SKILL.md
 § Execution routing). Use this contract only for a seat with no dispatch tool.
 Before any helper reading, follow SKILL.md current-run admission: default.sh plan starts a run ID;
-admit the whole index (or all targeted stills), state its total and hold above $5. Pass the same
+admit the whole index (or all targeted stills), state its total and hold above $5 unless a lead-authorized ceiling is recorded (SKILL.md cost section).
+The flags attest to approval the script cannot verify: use them only when the brief quotes the
+lead's explicit dollar amount and --authorized-by names that lead; otherwise hold. Re-plan clears
+the authorization; record it after default.sh plan. Pass the same
 --admission path to batch/helper calls. Zero gathered reads, including a pointer-only judge,
 means STOP with "no frames were read" and NEEDS_READERS, no QA verdict.
 Own the complete QA/debrief loop using the parent's video, project, artifact directory
