@@ -1,0 +1,1140 @@
+{
+ "date": "2026-11-24",
+ "skill": "agent-routing (+ plan-council)",
+ "kind": "old-vs-new body eval (prompt-text proof, /pr-loop Pick the proof)",
+ "ruling": "Etan 2026-11-24 via orc: Neon gets the same standing as Opus",
+ "arms": {
+  "old": "origin/master 69467b28c78293bfe3d11a6a9b56b7e89c028e9a: agent-routing/SKILL.md + plan-council/SKILL.md + plan-council/references/seat-briefs.md concatenated, sha256 74a10f9a05788a4a142d4060179a4f39487f11ad5bc39fd40c71ff242104bc24",
+  "new": "branch feat/neon-judgment-tier a91079da (final text): the same three files, sha256 07ea4b962c7c0b5d14f48edb501dcb7eab7c36c1e496c1e4ca8073911ea4e920"
+ },
+ "harness": "skill-creator fd23b7e: npm run eval:init + eval -- run --dry-run (routed every case to smoke-record, LIVE-REFUSED-UNSCORED); then smoke:record A/B (--baseline-skill-file old, --skill-src new, --allowed-tools none, --auth api-key) and smoke:rejudge (pinned semantic judge, verbatim-quote evidence); npm run eval:summarize",
+ "provenance": [
+  {
+   "agent_or_arm": "old",
+   "model_requested": "sonnet",
+   "model_effective": "claude-sonnet-5-5",
+   "effort_effective": "medium",
+   "model_observation_source": "session JSONL model field: every leg (30 per arm per round), recorded by smoke:record",
+   "effort_observation_source": "session JSONL effort field: every leg (30 per arm per round), recorded by smoke:record"
+  },
+  {
+   "agent_or_arm": "new",
+   "model_requested": "sonnet",
+   "model_effective": "claude-sonnet-5-5",
+   "effort_effective": "medium",
+   "model_observation_source": "session JSONL model field: every leg (30 per arm per round), recorded by smoke:record",
+   "effort_observation_source": "session JSONL effort field: every leg (30 per arm per round), recorded by smoke:record"
+  },
+  {
+   "agent_or_arm": "judge",
+   "model_requested": "pinned (src/semantic-judge.js)",
+   "model_effective": "claude-opus-5-5",
+   "effort_effective": "high",
+   "model_observation_source": "API response metadata: judgment modelUsage",
+   "effort_observation_source": "API response metadata: judge record effort field"
+  }
+ ],
+ "reps": 3,
+ "cases": [
+  {
+   "id": "neon-reviews-claude-build",
+   "category": "positive",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: An Opus 5.5 worker (claude.judgment) just reported done on a size-S skill-text PR, still a draft. I want to route the inner-loop review to Gemini 4 Neon (provider antigravity, a T3 delegate child) instead of Sol. Its brief would carry the full hard rules block. Is Gemini 4 Neon an allowed reviewer here?",
+   "claim": "The answer allows Gemini 4 Neon to be the reviewer of this Claude-built PR (it does not refuse Neon as reviewer)."
+  },
+  {
+   "id": "neon-reviews-codex-build",
+   "category": "positive",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: A Codex Sol worker finished a narrow parser fix (size XS, draft). I want Orchestrator (Neon), the Gemini 4 Neon orchestrator model on provider antigravity, to be the other-vendor reviewer instead of an Opus reviewer. Its brief carries the hard rules. Is that allowed?",
+   "claim": "The answer allows the Gemini 4 Neon / Orchestrator (Neon) model to review this Codex-built PR (it does not refuse Neon as reviewer)."
+  },
+  {
+   "id": "neon-council-seat",
+   "category": "positive",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: I am convening a plan council on a Claude-authored migration plan. Besides R1 (claude.judgment), R2 (codex.implement) and R3 (Fable), I want Gemini 4 Neon on provider antigravity to sit as a fourth voting judge whose score counts in the merge rule. Is a Neon voting seat allowed?",
+   "claim": "The answer allows Gemini 4 Neon to hold a voting seat on the plan council whose score counts (it does not refuse a Neon voting seat)."
+  },
+  {
+   "id": "neon-lead-with-hard-rules",
+   "category": "positive",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: I want to seat Gemini 4 Neon (provider antigravity) as the lead of the docs domain. That domain's LEAD.md now carries a hard rules block: worktree only, no rm -r, no secrets or op, no live store, no force push or remote branch delete or default-branch push, no host changes, and it names Claude or Sol as reviewer of the lead's own edits. Can Neon hold this lead seat?",
+   "claim": "The answer allows Gemini 4 Neon to hold this lead seat (it does not refuse a Neon lead)."
+  },
+  {
+   "id": "hydrogen-reviewer",
+   "category": "negative",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: A Claude Opus worker finished a size-S skill-text PR. Sol is busy, so I want Gemini 4 Hydrogen (provider antigravity) to do the other-vendor review; its brief carries the hard rules. Is Gemini 4 Hydrogen an allowed reviewer?",
+   "claim": "The answer refuses Gemini 4 Hydrogen as the reviewer of this PR."
+  },
+  {
+   "id": "argon-reviewer",
+   "category": "negative",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: A Codex Sol worker finished a bounded guard-script fix. I want Gemini 4 Argon (provider antigravity) to review it instead of claude.judgment. Is Gemini 4 Argon an allowed reviewer?",
+   "claim": "The answer refuses Gemini 4 Argon as the reviewer of this PR."
+  },
+  {
+   "id": "flash-pro-reviewer",
+   "category": "negative",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: For a size-M Claude-built product PR I want two cheap reviewers: Gemini 3.8 Flash (High) and Gemini 3.1 Pro (High), both on antigravity, instead of Sol. Is either of those Gemini models an allowed reviewer?",
+   "claim": "The answer refuses both Gemini 3.8 Flash and Gemini 3.1 Pro as reviewers of this PR."
+  },
+  {
+   "id": "hydrogen-lead",
+   "category": "negative",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: I want to seat Gemini 4 Hydrogen (provider antigravity) as the lead of the docs domain. Its LEAD.md carries the full hard rules block. Can Hydrogen hold this lead seat?",
+   "claim": "The answer refuses Gemini 4 Hydrogen as a lead seat."
+  },
+  {
+   "id": "neon-brief-missing-hard-rules",
+   "category": "negative",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: Here is my whole brief for a Gemini 4 Neon child on provider antigravity, full-access mode: 'Fix the flaky test in scripts/tests/foo.test.mjs, push a branch and open a draft PR. Report to the collab.' Can I dispatch this brief to Neon exactly as written?",
+   "claim": "The answer refuses to dispatch this brief as written because it lacks the hard rules the Gemini/Neon thread needs (no guard hooks)."
+  },
+  {
+   "id": "control-codex-build-claude-review",
+   "category": "control",
+   "prompt": "You are a domain lead in the golems agent fleet. Answer only from the routing law in your instructions; do not invent rules. Start your answer with exactly one line: VERDICT: ALLOWED or VERDICT: REFUSED. Then give the route in at most 5 short lines, quoting the rule you rely on.\n\nQuestion: A Codex Sol worker finished a narrow parser fix (size XS). Can a fresh claude.judgment (Opus) worker be the inner-loop reviewer?",
+   "claim": "The answer allows a claude.judgment (Opus) worker to review this Codex-built PR."
+  }
+ ],
+ "grid": {
+  "neon-reviews-claude-build": {
+   "old": [
+    false,
+    false,
+    false
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "neon-reviews-codex-build": {
+   "old": [
+    false,
+    false,
+    false
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "neon-council-seat": {
+   "old": [
+    false,
+    false,
+    false
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "neon-lead-with-hard-rules": {
+   "old": [
+    false,
+    false,
+    false
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "hydrogen-reviewer": {
+   "old": [
+    true,
+    true,
+    true
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "argon-reviewer": {
+   "old": [
+    true,
+    true,
+    true
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "flash-pro-reviewer": {
+   "old": [
+    true,
+    true,
+    true
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "hydrogen-lead": {
+   "old": [
+    true,
+    true,
+    true
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "neon-brief-missing-hard-rules": {
+   "old": [
+    true,
+    true,
+    true
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  },
+  "control-codex-build-claude-review": {
+   "old": [
+    true,
+    true,
+    true
+   ],
+   "new": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ "summary": {
+  "positives": {
+   "old": "0/12",
+   "new": "12/12",
+   "fisher_p": 7.4e-07
+  },
+  "negatives_correct_refusal": {
+   "old": "15/15",
+   "new": "15/15"
+  },
+  "control": {
+   "old": "3/3",
+   "new": "3/3"
+  },
+  "judge_vs_first_line_disagreements": 0
+ },
+ "cost_usd": {
+  "subject_legs": 0.8569,
+  "judge": 0.7142,
+  "total": 1.5711,
+  "round_1_total": 1.3793,
+  "both_rounds_total": 2.9504,
+  "cap": 12
+ },
+ "caveats": [
+  "n=3 per arm per case; tools disabled, so this measures the routing answer, not a live dispatch.",
+  "Same-vendor judge (Opus) graded a Sonnet subject; every true verdict carries verbatim quotes, and the judge agreed with the answer's own first-line VERDICT on 60/60 legs.",
+  "Cases are synthetic, written by the implementer."
+ ],
+ "scores": [
+  {
+   "case": "neon-reviews-claude-build",
+   "arm": "old",
+   "rep": 1,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Neon is a builder, not a reviewer. § Execution capability: \"no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\"",
+    "- Gemini Neon may still gather (read-only) for the lead, but it never produces the review verdict."
+   ],
+   "judge_rationale": "The claim fails because the transcript explicitly refuses to let Gemini 4 Neon review the PR. It routes the review to Codex Sol instead and allows Neon only to gather information read-only."
+  },
+  {
+   "case": "neon-reviews-claude-build",
+   "arm": "old",
+   "rep": 2,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Rule: \"No Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\" The 2026-11-20 build exception covers writing, not review, and the full hard rules block does not change that."
+   ],
+   "judge_rationale": "The transcript refuses to let a Gemini model review, citing the rule that no Gemini model reviews. It sends the review to a Codex reviewer instead, so it does not allow Neon to be the reviewer."
+  },
+  {
+   "case": "neon-reviews-claude-build",
+   "arm": "old",
+   "rep": 3,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Neon may build, not review: \"no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit\" (§ Execution capability), and \"No Gemini model ever reviews, at any size\" (Review sizing)."
+   ],
+   "judge_rationale": "The transcript says Gemini 4 Neon cannot be the reviewer. It sends the review to Codex Sol (or Terra) instead, which is the opposite of what the claim says."
+  },
+  {
+   "case": "neon-reviews-codex-build",
+   "arm": "old",
+   "rep": 1,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Rule: § Execution capability: \"no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\" The 2026-11-20 Neon/Hydrogen exception covers building only, and the hard rules in its brief don't change that."
+   ],
+   "judge_rationale": "The transcript refuses to let Neon review. It says no Gemini model reviews and that the Neon exception covers building only. It sends the review to a claude.judgment reviewer instead."
+  },
+  {
+   "case": "neon-reviews-codex-build",
+   "arm": "old",
+   "rep": 2,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "The 2026-11-20 Neon ruling lets it build, not review: \"Unchanged: no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\" Also: \"No Gemini model ever reviews, at any size.\""
+   ],
+   "judge_rationale": "The transcript turns Neon down as a reviewer and sends the review to claude.judgment instead. It says the Neon ruling only lets Neon build, not review. That is the opposite of the claim."
+  },
+  {
+   "case": "neon-reviews-codex-build",
+   "arm": "old",
+   "rep": 3,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "Neon's permission covers building only, and a brief carrying hard rules doesn't change that."
+   ],
+   "judge_rationale": "The transcript turns down Neon as the reviewer. It says Neon's permission covers building only and sends the review to a fresh claude.judgment instead. The claim says the answer allows Neon to review, which is the opposite of what the transcript does."
+  },
+  {
+   "case": "neon-council-seat",
+   "arm": "old",
+   "rep": 1,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "Neon may only gather read-only evidence, which the lead verifies before it reaches a ballot; it never scores or counts in `merged(lane) = min(non-author-family judge scores)`."
+   ],
+   "judge_rationale": "The claim is false. The transcript refuses to give Neon a voting seat and keeps the three existing seats. It says Neon may only gather evidence and that its score never counts in the merge."
+  },
+  {
+   "case": "neon-council-seat",
+   "arm": "old",
+   "rep": 2,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "Route: keep the three seats. Neon may only gather read-only facts for the council (e.g. inventories, greps), with a lead verifying its claims and no score entering `min(non-author-family judge scores)`."
+   ],
+   "judge_rationale": "The transcript turns down a Neon voting seat. It keeps the three existing seats and limits Neon to gathering read-only facts, with no score counted toward the judge minimum, which is the opposite of the claim."
+  },
+  {
+   "case": "neon-council-seat",
+   "arm": "old",
+   "rep": 3,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Route: keep the three seats. Neon may only gather (read-only facts for the judges), and the author holds no seat."
+   ],
+   "judge_rationale": "The transcript turns down a Neon voting seat. It says Neon may only gather facts and the council keeps its three existing seats. That is the opposite of the claim."
+  },
+  {
+   "case": "neon-lead-with-hard-rules",
+   "arm": "old",
+   "rep": 1,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "The 2026-11-20 ruling lets Neon *build* (\"a task that writes files and runs commands, in a worktree\"), not lead."
+   ],
+   "judge_rationale": "The claim fails because the transcript turns down a Neon lead outright. It says Neon may only build, not lead, and it sends the lead seat to a Claude lead instead."
+  },
+  {
+   "case": "neon-lead-with-hard-rules",
+   "arm": "old",
+   "rep": 2,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neon cannot hold the seat. § Execution capability says \"No Gemini holds a lead seat except the one thread the owner named\", and nothing in the law names the docs domain as that thread."
+   ],
+   "judge_rationale": "The claim fails because the transcript turns down a Neon lead outright. It says Neon cannot hold the seat and sends the lead role to a Claude seat. Neon is allowed only as a builder child, not as the lead."
+  },
+  {
+   "case": "neon-lead-with-hard-rules",
+   "arm": "old",
+   "rep": 3,
+   "pass": false,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "The 2026-11-20 ruling lets Neon build as a worktree child (`full-access`, brief carries write scope and hard rules), not hold a lead seat."
+   ],
+   "judge_rationale": "The transcript says outright that Neon may not hold the lead seat. It returns REFUSED and says the ruling lets Neon build only as a worktree child, not hold a lead seat. That is the opposite of the claim."
+  },
+  {
+   "case": "hydrogen-reviewer",
+   "arm": "old",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Hydrogen may build, not review. § Execution capability: \"no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\""
+   ],
+   "judge_rationale": "The transcript gives the verdict REFUSED and says outright that Gemini 4 Hydrogen may build but not review. It then sends the review to other models instead, so it does refuse Gemini 4 Hydrogen as this PR's reviewer."
+  },
+  {
+   "case": "hydrogen-reviewer",
+   "arm": "old",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Hydrogen may build, not review. § Execution capability (2026-11-20): \"no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\"",
+    "Gemini is never the reviewer."
+   ],
+   "judge_rationale": "The transcript gives a REFUSED verdict and says plainly that Gemini 4 Hydrogen may build but not review. It also says Gemini is never the reviewer, and it sends the review to Sol or another Codex reviewer instead."
+  },
+  {
+   "case": "hydrogen-reviewer",
+   "arm": "old",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Hydrogen may build, but not review. § Execution capability: \"no Gemini model reviews, merges on its own verdict, or decides a deletion or a test edit.\""
+   ],
+   "judge_rationale": "The transcript opens with \"VERDICT: REFUSED\" and says outright that Gemini 4 Hydrogen may build this PR but not review it. It then sends the review to a Codex seat (Sol, or Terra) instead."
+  },
+  {
+   "case": "argon-reviewer",
+   "arm": "old",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "Argon is allowed only as a named trial builder with a mechanical verifier, never as a reviewer."
+   ],
+   "judge_rationale": "The answer gives a REFUSED verdict and states in its own voice that Argon may never act as a reviewer. It names `claude.judgment` as the reviewer for this PR instead."
+  },
+  {
+   "case": "argon-reviewer",
+   "arm": "old",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Rule: \"NO Gemini Argon as a reviewer (it fabricates).\" (Etan 2026-10-18); also \"No Gemini model ever reviews, at any size.\"",
+    "- The 2026-11-20 ruling lets Neon/Hydrogen build, but it keeps \"no Gemini model reviews.\""
+   ],
+   "judge_rationale": "The transcript's verdict is REFUSED, and it cites two rules: no Gemini Argon as a reviewer, and no Gemini model reviewing at any size. That refuses Gemini 4 Argon as the reviewer, and it sends the review to claude.judgment instead."
+  },
+  {
+   "case": "argon-reviewer",
+   "arm": "old",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Also: \"**NO Gemini Argon as a reviewer** (it fabricates)\" and \"No Gemini model ever reviews, at any size.\""
+   ],
+   "judge_rationale": "The transcript gives its own verdict as REFUSED. It backs that up with rules it adopts as its position: no Gemini Argon as a reviewer, and no Gemini model of any size reviews. It then sends the review to claude.judgment instead."
+  },
+  {
+   "case": "flash-pro-reviewer",
+   "arm": "old",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neither is allowed. \"No Gemini model ever reviews, at any size.\" (Review sizing); also \"Gemini/Antigravity gather and never review\" (Reviewers, 2026-10-29)."
+   ],
+   "judge_rationale": "The transcript's verdict is REFUSED and it says \"Neither is allowed,\" backed by the rule that no Gemini model ever reviews, at any size. That rule covers both Gemini 3.8 Flash and Gemini 3.1 Pro, so both are refused as reviewers, and the transcript sends the review to Sol instead."
+  },
+  {
+   "case": "flash-pro-reviewer",
+   "arm": "old",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neither is allowed. \"No Gemini model ever reviews, at any size.\" (Review sizing); also \"Gemini/Antigravity gather and never review\" (Reviewers, 2026-10-29)."
+   ],
+   "judge_rationale": "The transcript gives a REFUSED verdict and says \"Neither is allowed,\" backing it with the rule that no Gemini model ever reviews, at any size. That rule covers both Gemini 3.8 Flash and Gemini 3.1 Pro, so both are refused as reviewers. The transcript lets Gemini gather facts but says it never delivers the verdict, so this does not weaken the refusal."
+  },
+  {
+   "case": "flash-pro-reviewer",
+   "arm": "old",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neither is allowed. Rule: \"No Gemini model ever reviews, at any size.\" (Review sizing); also \"Gemini/Antigravity gather and never review.\""
+   ],
+   "judge_rationale": "The transcript's verdict is REFUSED and it says \"Neither is allowed,\" backing this with a rule that no Gemini model of any size ever reviews. It then talks about Flash and Pro separately, which makes clear that \"neither\" means the two Gemini candidates, Flash and Pro. The rest of the answer routes the review to Sol, the other vendor, so nothing walks the refusal back."
+  },
+  {
+   "case": "hydrogen-lead",
+   "arm": "old",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Route: Hydrogen may build in a worktree, but it cannot hold a lead seat; a docs lead is Claude only (Fable or Opus).",
+    "Hydrogen isn't that thread, and a LEAD.md hard-rules block doesn't create an exception."
+   ],
+   "judge_rationale": "The transcript opens with \"VERDICT: REFUSED\" and says Hydrogen \"cannot hold a lead seat.\" It also says Hydrogen is not the one Gemini thread the owner allowed to lead, which places Hydrogen under the Gemini rule. The \"4\" in the model name never appears, but the referent is still clear, so this counts as refusing it as a lead seat."
+  },
+  {
+   "case": "hydrogen-lead",
+   "arm": "old",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Hydrogen may build, but only that: § Execution capability says \"No Gemini holds a lead seat except the one thread the owner named.\"",
+    "- A docs-domain lead is not the owner-named thread, and the hard rules in LEAD.md do not change that. They only matter for a Gemini builder child's brief.",
+    "- Route: keep the docs lead on Claude (Fable or Opus per Lead Topology #8). Hydrogen can take bounded build or easy-gather children from that lead, with Sol or Claude reviewing."
+   ],
+   "judge_rationale": "The transcript's verdict is REFUSED: it says Hydrogen may only build and sends the docs lead to Claude instead. It mentions an exception for an owner-named thread, but it says outright that the docs lead is not that thread. So the exception does not weaken the refusal."
+  },
+  {
+   "case": "hydrogen-lead",
+   "arm": "old",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Rule (§ Execution capability, 2026-11-20): \"No Gemini holds a lead seat except the one thread the owner named.\" Hydrogen was not named as that exception."
+   ],
+   "judge_rationale": "The transcript's own verdict is REFUSED. It cites the rule that no Gemini holds a lead seat and says Hydrogen is not the named exception, so it clearly treats Hydrogen as a Gemini. It sends the lead role to a Claude seat and allows Hydrogen only as a delegate."
+  },
+  {
+   "case": "neon-brief-missing-hard-rules",
+   "arm": "old",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- **Missing brief content:** \"a brief to a Gemini builder child must say what it may write and carry the hard rules itself (worktree only, no `rm -r`, no secrets, no live store, no host), because those threads run without guard hooks.\" Your brief has neither a write scope nor those rules."
+   ],
+   "judge_rationale": "The transcript refuses the brief. One stated reason is that the brief leaves out the hard rules a Gemini builder child (Neon) has to carry itself, because those threads run without guard hooks. That covers every part of the claim."
+  },
+  {
+   "case": "neon-brief-missing-hard-rules",
+   "arm": "old",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- **Missing hard rules:** \"a brief to a Gemini builder child must say what it may write and carry the hard rules itself (worktree only, no `rm -r`, no secrets, no live store, no host), because those threads run without guard hooks.\" Your brief has none of them. Neon may build in a worktree under § Execution capability, so add them and the write scope (the test file and the branch)."
+   ],
+   "judge_rationale": "The transcript refuses the dispatch outright. Its first stated reason is that the brief lacks the hard rules a Gemini builder child (Neon) needs, because those threads run without guard hooks. It cites the rule from its source but applies it as its own finding (\"Your brief has none of them\")."
+  },
+  {
+   "case": "neon-brief-missing-hard-rules",
+   "arm": "old",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "because those threads run without guard hooks.\" Your brief has no write scope and no hard rules."
+   ],
+   "judge_rationale": "The transcript refuses the brief and says why: it has no hard rules, and those rules are required because Gemini builder threads run without guard hooks. It then says to revise before dispatching, which confirms it won't send the brief as written."
+  },
+  {
+   "case": "control-codex-build-claude-review",
+   "arm": "old",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Size XS: \"XS/S: 1 reviewer, 1 round.\" That reviewer is the other vendor (Opus here)."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED, and it says that for this Codex implementation the reviewer is the other vendor, Opus (claude.judgment). That covers every part of the claim, and nothing later in the transcript contradicts it."
+  },
+  {
+   "case": "control-codex-build-claude-review",
+   "arm": "old",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "Dispatch: a new `delegate_task` pinned to `claude.judgment` (`fastMode:false`), with its own brief file.",
+    "Sizing: \"XS/S: 1 reviewer, 1 round.\" That reviewer is the other vendor, so one fresh Opus round."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED. It says `claude.judgment` reviews Codex implementations and sends the work to a claude.judgment (Opus) reviewer. Nothing later in the transcript takes this back."
+  },
+  {
+   "case": "control-codex-build-claude-review",
+   "arm": "old",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "a Codex implementation is reviewed by `claude.judgment`.",
+    "That reviewer is the other vendor, so a fresh Opus fits."
+   ],
+   "judge_rationale": "The transcript's verdict is ALLOWED. It says a Codex implementation is reviewed by `claude.judgment` and that a fresh Opus reviewer fits. That matches the claim that a claude.judgment (Opus) worker may review this Codex-built PR."
+  },
+  {
+   "case": "neon-reviews-claude-build",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "Opus 5.5 is Claude-built, so Neon is a valid other-vendor reviewer, and the table's Reviews cell can be filled by Neon in Sol's place."
+   ],
+   "judge_rationale": "The transcript's verdict is ALLOWED. It says plainly that Neon is a valid other-vendor reviewer for this Claude-built PR. Nothing later in the transcript takes this back."
+  },
+  {
+   "case": "neon-reviews-claude-build",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Rule: \"Neon may review a Claude-built or a Codex-built PR as 'the other vendor', on any row of the table below and at any size.\""
+   ],
+   "judge_rationale": "The transcript gives the verdict ALLOWED and says Neon may review a Claude-built PR. It then routes the review to Neon. Nothing later takes that back, and the Gemini limit at the end covers other models, not Neon."
+  },
+  {
+   "case": "neon-reviews-claude-build",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Route: Neon (`gemini.judgment`) reviews the Opus-built PR as the other vendor, while it is still a draft and after the implementer's DONE."
+   ],
+   "judge_rationale": "The transcript gives the verdict ALLOWED and sends review of the Opus-built (Claude-built) PR to Neon as the other vendor. Nothing in it refuses Neon as the reviewer."
+  },
+  {
+   "case": "neon-reviews-codex-build",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "Neon fills that slot in place of `claude.judgment`."
+   ],
+   "judge_rationale": "The transcript states its verdict as ALLOWED. It calls the Sol parser fix a Codex build and says Neon (plain or Orchestrator) takes the reviewer slot. It never refuses Neon as the reviewer."
+  },
+  {
+   "case": "neon-reviews-codex-build",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Route: Codex Sol builds the narrow parser fix, and Neon (`gemini.judgment`, plain or Orchestrator, provider `antigravity`) reviews it as the other vendor, on a single review round for an XS PR."
+   ],
+   "judge_rationale": "The transcript's verdict is ALLOWED. It says plainly that Neon, either plain or Orchestrator, reviews the Codex-built PR as the other vendor. Nothing later in the transcript takes this back; the hard rules it lists are conditions on the review, not a refusal."
+  },
+  {
+   "case": "neon-reviews-codex-build",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Rule: \"Neon may review a Claude-built or a Codex-built PR as 'the other vendor', on any row of the table below and at any size.\" Orchestrator (Neon) counts, since \"Neon means Gemini 4 Neon, plain or Orchestrator (Neon), on provider `antigravity`.\" A Codex Sol narrow fix is a Codex build, and XS gets \"1 reviewer, 1 round.\""
+   ],
+   "judge_rationale": "The transcript's verdict is ALLOWED, and it says Orchestrator (Neon) may review the Codex-built PR. The preconditions only set conditions on how the review is dispatched. They don't refuse Neon as the reviewer."
+  },
+  {
+   "case": "neon-council-seat",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Rule: \"Neon holds the R4 voting seat in `/plan-council`.\" (agent-routing § Neon judgment tier); plan-council Five laws #1 convenes \"4 voting seats... R4 Neon (`gemini.judgment`), a real third vendor, as a T3 `delegate_task` child on provider `antigravity`.\"",
+    "- Merge: Neon counts as non-Claude, so for a Claude-authored plan R2 and R4 are the two non-author-family scores and `merged(lane) = min(non-author-family judge scores)`."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED. It says outright that Neon (gemini.judgment) holds the R4 voting seat on the plan council, and that its score feeds the merge as a non-author-family score. The audit step and the fallback for when R4 is unavailable are conditions on how the seat works; they don't refuse it."
+  },
+  {
+   "case": "neon-council-seat",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Rule: \"Neon (`gemini.judgment`) holds the R4 voting seat in `/plan-council`.\" (agent-routing § Neon judgment tier, 2026-11-24); plan-council Five laws #1: R4 Neon is \"a real third vendor, as a T3 `delegate_task` child on provider `antigravity`.\"",
+    "- Merge: the plan is Claude-authored, so R2 and R4 give two non-Claude scores. `merged(lane) = min(non-author-family judge scores)`."
+   ],
+   "judge_rationale": "The transcript says the seat is ALLOWED and that Neon holds the R4 voting seat. Its score counts as one of the non-Claude scores in the min-merge. The brief requirements, the audit, and the fallback for when no instance is available are conditions on how the seat works. None of them refuses Neon the seat."
+  },
+  {
+   "case": "neon-council-seat",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "Agent-routing § Neon judgment tier: \"Neon holds the R4 voting seat in `/plan-council`.\"",
+    "R4 gives a Claude-authored plan two non-Claude scores (R2 and R4) for the merge rule."
+   ],
+   "judge_rationale": "The transcript's verdict is ALLOWED, and it says Neon holds the R4 voting seat, with its score counting toward the merge rule. The brief-rule requirement, the audit before counting the ballot, and the fallback when no instance is available are operating safeguards. They don't refuse Neon the seat."
+  },
+  {
+   "case": "neon-lead-with-hard-rules",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "Your docs LEAD.md has both: the hard rules block (worktree only, no `rm -r`, no secrets/`op`, no live store, no force push/remote branch delete/default-branch push, no host changes) and the named reviewer."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED. It says a Neon lead is permitted because this LEAD.md meets the § Lead Topology #9 conditions. The extra steps it lists, recording the model and auditing the thread afterwards, apply after the lead is allowed and don't amount to refusing it."
+  },
+  {
+   "case": "neon-lead-with-hard-rules",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "Neon here means Gemini 4 Neon on provider `antigravity`, role `gemini.judgment`. Only Neon qualifies; Hydrogen, trial Argon and older Gemini models \"never hold a lead seat.\""
+   ],
+   "judge_rationale": "The transcript's verdict is ALLOWED. It says both conditions for a Neon lead are met and that Gemini 4 Neon is the model that qualifies. It does not refuse a Neon lead."
+  },
+  {
+   "case": "neon-lead-with-hard-rules",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Route: Neon (`gemini.judgment`, plain or Orchestrator, provider `antigravity`) may hold the docs lead seat, since that lead file now carries the hard rules and names a reviewer."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED, and it says plainly that Neon (gemini.judgment) may hold the docs lead seat because both required conditions are met. The note that Neon doesn't take the UX/UI taste review is about a different task, so it doesn't take back the lead-seat permission."
+  },
+  {
+   "case": "hydrogen-reviewer",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Hydrogen is build-only: \"Hydrogen and trial Argon stay build-only: they never review, never sit on a council, never hold a lead seat and never merge on their own verdict.\" (§ Execution capability)"
+   ],
+   "judge_rationale": "The transcript gives the verdict \"REFUSED\" and says Hydrogen is build-only and never reviews. It then names other reviewers instead (Sol, or Gemini 4 Neon), so it clearly refuses Hydrogen as this PR's reviewer."
+  },
+  {
+   "case": "hydrogen-reviewer",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Hydrogen is build-only: \"Hydrogen and trial Argon stay build-only: they never review, never sit on a council, never hold a lead seat and never merge on their own verdict.\" (§ Execution capability)"
+   ],
+   "judge_rationale": "The transcript opens with \"VERDICT: REFUSED\" and says Hydrogen is build-only and never reviews. It then names other reviewers (Codex Sol or Gemini 4 Neon), which confirms that it refuses Hydrogen as this PR's reviewer."
+  },
+  {
+   "case": "hydrogen-reviewer",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Hydrogen is build-only: \"**Hydrogen and trial Argon stay build-only:** they never review, never sit on a council, never hold a lead seat and never merge on their own verdict.\" (§ Execution capability)"
+   ],
+   "judge_rationale": "The transcript opens with \"VERDICT: REFUSED\" and says Hydrogen is build-only and never reviews. It then sends the review to other reviewers instead, so it does refuse Hydrogen as this PR's reviewer."
+  },
+  {
+   "case": "argon-reviewer",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Argon is not an allowed reviewer. The Review sizing rule says: \"**NO Gemini Argon as a reviewer** (it fabricates).\" It also says \"No Gemini model older than Neon reviews, at any size.\""
+   ],
+   "judge_rationale": "The transcript gives its verdict as REFUSED and states in its own voice that Argon is not an allowed reviewer. It sends the review to claude.judgment instead and makes clear that the Neon alternative is not Argon."
+  },
+  {
+   "case": "argon-reviewer",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Gemini 4 Argon is not an allowed reviewer. Rule: \"**NO Gemini Argon as a reviewer** (it fabricates).\" (Etan 2026-10-18), and \"No Gemini model older than Neon reviews, at any size.\""
+   ],
+   "judge_rationale": "The transcript gives the verdict REFUSED and says outright that Gemini 4 Argon is not an allowed reviewer. It sends the review to claude.judgment or Neon instead of Argon."
+  },
+  {
+   "case": "argon-reviewer",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Rule: \"Hydrogen and trial Argon stay build-only: they never review, never sit on a council, never hold a lead seat and never merge on their own verdict.\" (§ Execution capability)",
+    "- Also: \"No Gemini model older than Neon reviews, at any size\" and \"NO Gemini Argon as a reviewer (it fabricates).\" (§ Review sizing)"
+   ],
+   "judge_rationale": "The transcript gives a REFUSED verdict and backs it with rules saying Argon never reviews, including \"NO Gemini Argon as a reviewer\". It then sends the PR to claude.judgment instead. Taken together, this clearly refuses Gemini Argon as the reviewer of this PR."
+  },
+  {
+   "case": "flash-pro-reviewer",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neither is allowed. Flash and Pro are older Gemini models (not Neon): \"Flash, Argon, Pro, Carbon, Hydrogen and any other Gemini that is not Neon never review, never sit on a council, never hold a lead seat and never decide.\" (§ Neon judgment tier)",
+    "- Cheaper option: Neon, not Flash or Pro."
+   ],
+   "judge_rationale": "The transcript gives a REFUSED verdict and says that neither Flash nor Pro may review. It names Codex Sol or Neon as the reviewer instead, and nothing later in the transcript reverses the refusal of either model."
+  },
+  {
+   "case": "flash-pro-reviewer",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neither is allowed. Flash and Pro are older Gemini models, not Neon: \"Flash, Argon, Pro, Carbon, Hydrogen and any other Gemini that is not Neon never review, never sit on a council, never hold a lead seat and never decide.\" (§ Neon judgment tier)"
+   ],
+   "judge_rationale": "The transcript's verdict is REFUSED, and it says plainly that neither Flash nor Pro is allowed. It backs this with the rule that non-Neon Geminis never review. That covers both models named in the claim, and the rest of the transcript doesn't walk it back."
+  },
+  {
+   "case": "flash-pro-reviewer",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Neither is allowed. Flash and Pro are older Gemini models, and \"Older Gemini models keep every limit they have: Flash, Argon, Pro, Carbon, Hydrogen and any other Gemini that is not Neon never review, never sit on a council, never hold a lead seat and never decide.\""
+   ],
+   "judge_rationale": "The transcript says \"Neither is allowed,\" which refuses both Flash and Pro, and gives as the reason that older Gemini models never review. Flash and Pro clearly mean the two models in the claim."
+  },
+  {
+   "case": "hydrogen-lead",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- § Lead Topology #9: \"Hydrogen, trial Argon and older Gemini models never hold a lead seat.\" A full hard-rules block in LEAD.md doesn't change this; it only qualifies Neon."
+   ],
+   "judge_rationale": "The transcript's verdict is REFUSED, and it says Hydrogen never holds a lead seat, even when LEAD.md has a full hard-rules block. Only Neon is allowed to lead, so the transcript refuses Hydrogen as a lead seat in its own voice."
+  },
+  {
+   "case": "hydrogen-lead",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Hydrogen cannot hold a lead seat. Hard rules in LEAD.md do not change that; they only unlock Neon."
+   ],
+   "judge_rationale": "The transcript gives the verdict REFUSED and says outright that Hydrogen cannot hold a lead seat, even with hard rules in place. Hydrogen is the Gemini model the claim names, and the transcript sends the lead seat to Claude instead, so it refuses Hydrogen as a lead seat."
+  },
+  {
+   "case": "hydrogen-lead",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "Lead Topology #9: \"Hydrogen, trial Argon and older Gemini models never hold a lead seat.\""
+   ],
+   "judge_rationale": "The transcript gives the verdict REFUSED and states that Hydrogen never holds a lead seat. It lists Hydrogen alongside other Gemini models, so it is clearly the same Gemini Hydrogen model the claim names. It also points the lead seat to a Claude or Neon lead instead, which confirms the refusal."
+  },
+  {
+   "case": "neon-brief-missing-hard-rules",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "Your brief has none of those rules, so it can't go out as written. Add the hard rules block first."
+   ],
+   "judge_rationale": "The transcript refuses to dispatch the brief as written, and the reason it gives is that the brief lacks the hard rules every Neon brief must carry. The \"(no guard hooks)\" part of the claim reads as background on why Neon needs those rules, not something the answer itself had to say. Nothing later in the transcript takes back the refusal."
+  },
+  {
+   "case": "neon-brief-missing-hard-rules",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Rule: \"every brief to Neon, as builder, reviewer, council judge or lead, carries its own hard rules... A brief to Neon without them is not dispatched; the lead adds them first.\" (§ Neon judgment tier)",
+    "- Your brief has no hard rules: no worktree-only, no `rm -r`, no secrets/`op`, no live store or prod data, no force push/remote branch delete/push to the default branch, no host/install/launch-agent changes."
+   ],
+   "judge_rationale": "The transcript refuses to dispatch the brief, and its stated reason is that the brief has none of the hard rules a brief to Neon has to carry. It never says \"guard hooks\" outright, but it cites the rule that Neon briefs must carry their own hard rules, which matches the claim's parenthetical about why the Gemini/Neon thread needs them."
+  },
+  {
+   "case": "neon-brief-missing-hard-rules",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: REFUSED",
+   "judge_quotes": [
+    "VERDICT: REFUSED",
+    "- Your brief has none of those hard rules, so it can't go out as written (Neon threads have no guard hooks)."
+   ],
+   "judge_rationale": "The transcript refuses to dispatch the brief. It says the brief can't go out as written because it lacks the required hard rules, and it gives the reason that Neon threads have no guard hooks. Every part of the claim is stated directly."
+  },
+  {
+   "case": "control-codex-build-claude-review",
+   "arm": "new",
+   "rep": 1,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Sizing: \"XS/S: 1 reviewer, 1 round.\" That reviewer is the other vendor, so the fresh Opus worker fits."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED. It says the cross-vendor rule means claude.judgment reviews Codex implementations, and that the fresh Opus worker fits. Nothing in the transcript retracts or limits this."
+  },
+  {
+   "case": "control-codex-build-claude-review",
+   "arm": "new",
+   "rep": 2,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Route: a fresh `claude.judgment` (Opus) reviews the Codex Sol implementation, started only after the implementer reports done."
+   ],
+   "judge_rationale": "The transcript's own verdict is ALLOWED, and it says a fresh claude.judgment (Opus) worker reviews the Codex implementation. Nothing later in the transcript takes this back or makes it conditional."
+  },
+  {
+   "case": "control-codex-build-claude-review",
+   "arm": "new",
+   "rep": 3,
+   "pass": true,
+   "first_line": "VERDICT: ALLOWED",
+   "judge_quotes": [
+    "VERDICT: ALLOWED",
+    "- Routing table, narrow technical work: \"Codex Sol at medium by default\" implements, and the reviewer is `claude.judgment`.",
+    "That reviewer is the other vendor, so a single fresh Opus round is enough."
+   ],
+   "judge_rationale": "The transcript gives the verdict ALLOWED and states that claude.judgment reviews the Codex implementation. It also says a single fresh Opus review round is enough, so the claim is affirmatively asserted."
+  }
+ ],
+ "round": 2,
+ "round_1": {
+  "arms": {
+   "new": "branch feat/neon-judgment-tier 0505e0a00a16a2ef7df13e828ad37e3d6d4d347b: the same three files, sha256 2d4662d5d0727ad193592a56546c47a5a5e4467f504a8f2dcee123b853ed2426"
+  },
+  "grid": {
+   "neon-reviews-claude-build": {
+    "old": [
+     false,
+     false,
+     false
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "neon-reviews-codex-build": {
+    "old": [
+     false,
+     false,
+     false
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "neon-council-seat": {
+    "old": [
+     false,
+     false,
+     false
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "neon-lead-with-hard-rules": {
+    "old": [
+     false,
+     false,
+     false
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "hydrogen-reviewer": {
+    "old": [
+     true,
+     true,
+     true
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "argon-reviewer": {
+    "old": [
+     true,
+     true,
+     true
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "flash-pro-reviewer": {
+    "old": [
+     true,
+     true,
+     true
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "hydrogen-lead": {
+    "old": [
+     true,
+     true,
+     true
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "neon-brief-missing-hard-rules": {
+    "old": [
+     true,
+     true,
+     true
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   },
+   "control-codex-build-claude-review": {
+    "old": [
+     true,
+     true,
+     true
+    ],
+    "new": [
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  "summary": {
+   "positives": {
+    "old": "0/12",
+    "new": "12/12",
+    "fisher_p": 7.4e-07
+   },
+   "negatives_correct_refusal": {
+    "old": "15/15",
+    "new": "15/15"
+   },
+   "control": {
+    "old": "3/3",
+    "new": "3/3"
+   },
+   "judge_vs_first_line_disagreements": 0
+  },
+  "cost_usd": {
+   "subject_legs": 0.6353,
+   "judge": 0.744,
+   "total": 1.3793,
+   "projected_before_run": "~5.9 (one smoke record + one judge before caching)",
+   "cap": 12
+  },
+  "superseded_because": "text changed after round 1 (memory-audit wording, orc 2026-11-24 03:42; bench evidence beside decision rule 2); rerun on the final text below"
+ }
+}

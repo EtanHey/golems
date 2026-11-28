@@ -11,7 +11,7 @@ conservative non-author-family score govern disputed lanes.
 
 ## Scope
 
-The council runs 3 visible seats from 3 model families, self-invented rubrics, live-repo read-only validation, measured same-family bias, a lift round, and exact-head review loops.
+The council runs 4 visible voting seats from 4 model families, self-invented rubrics, live-repo read-only validation, measured same-family bias, a lift round, and exact-head review loops.
 
 ## Output contract
 
@@ -41,8 +41,16 @@ Load-bearing rules from those references, so a router that stops here still gets
 
 ### 1. Seats
 
-- Convene **3 voting seats from 3 model families** in visible cmux panes: R1 `claude.judgment`, R2
-  `codex.implement`, and the separately declared R3 Fable 5 seat. Never use background subagents.
+- Convene **4 voting seats from 4 model families**, each visible: R1 `claude.judgment`, R2
+  `codex.implement`, the separately declared R3 Fable 5 seat (cmux panes), and R4 `gemini.judgment`
+  as a T3 `delegate_task` child on provider `antigravity` (the 2026-11-24 Neon ruling, `/agent-routing`
+  § Neon judgment tier). R4 adds a fourth family to the merge (§ 2 Merge). Never use background subagents.
+- R4 runs in an Antigravity thread with no guard hooks: its brief carries its own hard rules (read-only
+  repo, the collab is its only write, no `rm -r`, no secrets, no push), per `/agent-routing` § Neon
+  judgment tier. A brief without them is not sent. They are instructions, not enforcement: the thread
+  can still call BrainLayer and run tools, so the convener audits R4's thread activity (memory calls,
+  writes, pushes) before counting its ballot. If no Mac's antigravity instance can run a child,
+  the council runs with R1–R3 and the report says `R4: unavailable (<reason>)`.
 - Pin every seat explicitly and verify the effective model from the pane. The Fable seat uses raw
   `claude --dangerously-skip-permissions --model claude-fable-5` because the repoGolem launcher cannot express it.
 - Supply no shared rubric. Each judge invents named dimensions and weights totaling 100.
@@ -59,6 +67,13 @@ Use [references/seat-briefs.md](references/seat-briefs.md) and
 - The plan author holds no seat and scores nothing.
 - Do not average disagreement away. For each disputed lane:
   `merged(lane) = min(non-author-family judge scores)`.
+- **A family is a model family, not a vendor**, one per seat; calculator tokens: R1 `opus`, R2 `sol`, R3 `fable`, R4 `neon`.
+  R4 signs as the bare alias `gemini` or a Neon model name; any other Gemini model gets no family and
+  the calculator exits 2. R3 stays its own declared family although Anthropic makes it, as it always
+  has here. Example, one lane scored R1 9, R2 8, R3 3, R4 9: an author from R1's family merges at 3
+  (min of R2, R3, R4), and so does an author from R4's family (min of R1, R2, R3). Pass the author's
+  model family to `--author-family`. A vendor name that spans two families (`claude`) is refused,
+  because guessing would let the author's own family into the merge.
 - Report same-family bias per lane and the round mean. Flag a same-family judge at **≥ +2** above
   the conservative non-family read.
 

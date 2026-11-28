@@ -28,5 +28,13 @@
         "gemini-pro-orchestrator-g1-pro": ["thought_level"]
       }
     }
+  },
+  "rechecked": {
+    "2026-11-24": {
+      "source": "orchestrator_capabilities search 'neon' on each Mac, for the gemini.judgment role",
+      "M1": "antigravity lists gemini-4-neon with option thinking_level, but the instance cannot run a child: 'Antigravity 1.4.5 predates the Antigravity CLI and no longer works with this T3 Code release.' gemini-pro-orchestrator-neon is not listed. The agy CLI on the M1 lists gemini-4-neon-{low,medium,high,xhigh} and gemini-pro-orchestrator-neon.",
+      "M4": "antigravity lists gemini-4-neon and gemini-pro-orchestrator-neon, both with option thought_level; the instance can run a child.",
+      "cursor": "both Macs' cursor instance also lists gemini-4-neon (options contextWindow, reasoning_effort). Not a route: Cursor stays Auto-only (/agent-routing)."
+    }
   }
 }

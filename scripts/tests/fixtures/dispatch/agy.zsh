@@ -11,6 +11,7 @@ _golem_agy_resolve_model() {
     flash|flash-high)            print -r -- "Gemini 3.8 Flash (High)" ;;
     flash-med|flash-medium)      print -r -- "Gemini 3.8 Flash (Medium)" ;;
     flash-low)                   print -r -- "Gemini 3.8 Flash (Low)" ;;
+    neon|neon-high)              print -r -- "Gemini 4 Neon (High)" ;;  # gemini.judgment launcher_tier (2026-11-24)
     opus)                        print -r -- "Claude Opus 4.6 (Thinking)" ;;
     sonnet)                      print -r -- "Claude Sonnet 4.6 (Thinking)" ;;
     oss|gpt-oss|gpt-oss-120b)    print -r -- "GPT-OSS 120B (Medium)" ;;

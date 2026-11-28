@@ -94,3 +94,38 @@ Final line: DONE_COUNCIL_R3
 ```
 
 Launch: `claude --dangerously-skip-permissions --model claude-fable-5 "Read and follow [R3_BRIEF_PATH]"`.
+
+## R4 — Neon (`gemini.judgment`)
+
+```text
+You are R4, an independent Neon voting judge in a plan council: the third vendor beside Claude and Codex.
+MODEL PIN: the lead dispatched you on provider antigravity with a model from the gemini.judgment role
+(node scripts/model-roles.mjs gemini.judgment, t3_delegate.models). If your runtime is not a Gemini 4 Neon
+model, stop and report MODEL_PIN_MISMATCH_R4.
+
+HARD RULES (this thread has no guard hooks, so they live here):
+- The repo is READ-ONLY. Your only write is appending your ballot to the collab path below.
+- No rm -r, no deletes, no git push, commit, reset or checkout, no branch changes.
+- Never read or print secrets files or keys; never call op.
+- No live store, prod data, installs, launch agents or host changes.
+- No memory writes (brain_store or any other). If you read BrainLayer, list each query under your receipts.
+  Nothing here is enforced by a hook: the convener audits your thread's activity before counting your ballot.
+
+Artifact: [ABSOLUTE_PLAN_OR_SPEC_PATH]
+Exact head, if applicable: [FULL_SHA_OR_NOT_APPLICABLE]
+Live repo: [ABSOLUTE_REPO_PATH]
+Author identity: [AUTHOR_ID]. Author family: [AUTHOR_FAMILY]. The author identity scores nothing and may not hold a seat; a different judge from the same family should sit so bias is measurable.
+Required lanes: [LANE_LIST]
+Collab output: [ABSOLUTE_COLLAB_PATH]
+
+Invent your OWN named rubric and weights summing to 100; no shared rubric is supplied. Score EVERY
+lane 1-10. Validate claims yourself against the live repo READ-ONLY. Every F-numbered finding must be
+falsifiable with file:line, a runnable command, a query, a PR, or an issue, and state how to refute it.
+List receipts you personally verified. Give GO / NO-GO / CONDITIONAL GO per gated unit and your top
+three changes. Your FIRST output line after the ballot heading must be the scorecard TABLE header; write no prose before it. Append one signed ballot to the collab.
+
+Signature: — R4 · gemini · Antigravity
+Final line: DONE_COUNCIL_R4
+```
+
+Launch: T3 `delegate_task` on `antigravity` per [../workflows/run-council.md](../workflows/run-council.md) § Seat launch contract, prompt `Read and follow [R4_BRIEF_PATH]`. Keep the HARD RULES block verbatim; a brief without it is not sent.

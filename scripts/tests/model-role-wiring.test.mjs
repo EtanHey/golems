@@ -181,7 +181,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   for (const rule of [
     '"**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)',
     '"Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)',
-    'Default implementers (2026-10-29,', 'holistic/product work', 'Claude Opus implements. Sonnet/Haiku never implement', 'Narrow technical work', 'Codex implements (Sol at medium by default; high with one line of why; § Codex seats D, 2026-11-13)', 'Reviewers (2026-10-29) are always the other vendor', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
+    'Default implementers (2026-10-29,', 'holistic/product work', 'Claude Opus implements. Sonnet/Haiku never implement', 'Narrow technical work', 'Codex implements (Sol at medium by default; high with one line of why; § Codex seats D, 2026-11-13)', 'Reviewers (2026-10-29) are always the other vendor', 'Neon (`gemini.judgment`) is a third vendor: it may review a Claude or Codex implementation, and Sol or `claude.judgment` reviews a Neon one', 'Other Gemini/Antigravity models gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
   ]) assert.ok(block.includes(rule), rule);
   const sizing = ssot.split('### Review sizing')[1]?.split('\n### ')[0];
   assert.ok(sizing, 'review sizing section is required');
@@ -189,6 +189,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
     '"XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab)',
     '"Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab)',
     'M: up to 2 rounds',
+    'No Gemini model older than Neon reviews, at any size',
     '"a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer."',
     '"That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI."',
   ]) assert.ok(sizing.includes(rule), rule);

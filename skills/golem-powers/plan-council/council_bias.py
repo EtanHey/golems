@@ -19,6 +19,12 @@ def _header_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", _plain(value).casefold())
 
 
+# AIDEV-NOTE: a council family is a MODEL family, not a vendor: opus, sol, fable and neon (the R4
+# Gemini 4 Neon seat, 2026-11-24). Fable stays its own declared family, so an Opus author's merge is
+# min(sol, fable, neon). A vendor name that spans two families ("claude": opus and fable) is refused.
+_AMBIGUOUS_AUTHOR = {"claude": ("opus", "fable"), "anthropic": ("opus", "fable")}
+
+
 def _family(value: str) -> str | None:
     lowered = value.casefold()
     if "fable" in lowered:
@@ -27,6 +33,11 @@ def _family(value: str) -> str | None:
         return "sol"
     if "opus" in lowered:
         return "opus"
+    # Only Neon holds R4: the bare alias `gemini` as a whole signature field (the prescribed
+    # `— R4 · gemini · Antigravity`) or a name with the word `neon`. Flash, Argon, Hydrogen, Pro,
+    # Carbon, `gemini-4` and any unnamed future Gemini get no family (exit 2 in the CLI).
+    if re.search(r"\bneon\b", lowered) or "gemini" in (field.strip() for field in lowered.split("·")):
+        return "neon"
     return None
 
 
@@ -107,7 +118,14 @@ def parse_ballot(path: Path) -> dict:
 
 def analyze_ballots(paths, author_family: str) -> dict:
     ballots = [parse_ballot(Path(path)) for path in paths]
-    author_family = _family(author_family) or author_family.strip().casefold()
+    requested = author_family.strip().casefold()
+    if requested in _AMBIGUOUS_AUTHOR:
+        families = " or ".join(_AMBIGUOUS_AUTHOR[requested])
+        raise ValueError(
+            f"author family {author_family!r} is a vendor with two council families ({families}); "
+            "pass the author's model family: opus, sol, fable or neon"
+        )
+    author_family = _family(author_family) or requested
     if len({ballot["family"] for ballot in ballots}) != len(ballots):
         raise ValueError("each ballot must represent a distinct model family")
     lane_sets = [set(ballot["lanes"]) for ballot in ballots]
