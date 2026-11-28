@@ -62,8 +62,8 @@ Run the loop in this order:
    starts the bots, once (Etan, 2026-11-01).
 6. After the flip, apply the target repo's bot policy (never request a bot review by hand when the flip already triggered one), invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 parent watch and its receipt first; bounded reads for a decision, one cheap watcher only outside T3, never a polling turn.
 7. Every finding is labelled **BLOCKING** (correctness, security, data loss, a broken contract, a missing required proof) or **NON-BLOCKING** (everything else). Fix only BLOCKING findings and row NON-BLOCKING ones as follow-ups; reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review. A round with zero BLOCKING findings is an APPROVE, and NON-BLOCKING findings never open another round ([classify](references/review-loop.md#classify-each-review-comment)). **Every real bug you fix also gets a guard that stops its class coming back:** a lint rule, a ratchet row (repos with a ratchet table), a fail-first test on the real code (fails on base, passes on the branch), or, when the bug is about the order of events, a fail-first race test or a TLA+ property, chosen by the order-of-events row of [Pick the proof](#pick-the-proof). Name the guard in the PR body next to the Loop-record defect count. Skip it only for a concrete technical reason that none of these can catch this bug class; effort or time never counts. A defect belonging to this PR's tryable behaviour gets its fix and guard in this PR, even when found outside the changed lines. An unrelated defect gets a new PR with its fix and guard (canon #9), and the 2-review-round cap still holds (owner decision, 2026-11-02).
-8. For every S-or-larger PR, after the routed inner-loop review and before exact-head merge checks, run the read-only Cursor diff pass once per head ([§8a.2](references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only)); XS skips it. Use Cursor Auto (no model flag), findings only: never edit or push. This advisory bot-tier pass never replaces the routed reviewer. Answer every finding before merge; a real finding arriving after merge opens a NEW PR. Record `Cursor pass: head=<sha> findings=<count>` in the PR body, or `Cursor pass: unavailable (<reason>)` on errors/quota exhaustion and proceed without retrying or blocking. If this dispatch exhausted quota, name that dispatch as the cause.
-9. An actual Bugbot usage/rate/spend-limit notice requires `Bugbot: unavailable (usage)` in the PR body, even on a routine PR where Bugbot was never requested. A GitHub `cursor[bot]` spend-limit notice is Bugbot activity, even on XS; record `Bugbot: unavailable (usage)`, never `Cursor pass: unavailable` for that notice. Also record an actually requested Bugbot that is unavailable. A routine XS/S/M PR with no Bugbot activity has no Bugbot step: no request, wait or body entry. Never wait or retry Bugbot. Confirm required checks and the routed review are green on `headRefOid`, then either hand off unmerged or merge.
+8. No Cursor in the fleet. Never dispatch the Cursor diff pass or request Bugbot, at any PR size.
+9. Confirm required checks and the routed review are green on `headRefOid`, then hand off unmerged or merge under the lane's authority. Investigate already-posted findings under the normal finding rules.
 10. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), and update tracking. For each resolved issue, run `gh issue view N --json state` (add `--repo owner/repo` for cross-repo issues); if still open, close it with a comment linking the merged PR. Then release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/_shared/lifecycle/CONTRACT.md) (`golems: skills/golem-powers/_shared/lifecycle/CONTRACT.md`); record REMOVED, RETAINED or acknowledged TRANSFERRED. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
 
 Every wait and PR-watch wake follows the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns).
@@ -78,20 +78,20 @@ The risk-sized rulings (Etan 2026-10-18, via orc collab), with the bot clarifica
 
 > Full panel only for L, data or security paths, and that panel = [composition: `/agent-routing` § Routing rules (SSOT)].
 
-**Bot clarification (2026-11-04):** Review bots (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.
+**Bot clarification:** Review bots (CodeRabbit/Codex) run only AFTER the inner loop, and they're advisory. Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.
 
 > Give each test/build its own ports and temp folders so they run in parallel.
 
 | PR | Merge when (everything at `headRefOid`) |
 |---|---|
-| XS/S | Fast CI green + one clean review round from the routed reviewer (+ the Cursor endpoint pass for S, step 8) → merge promptly |
+| XS/S | Fast CI green + one clean review round from the routed reviewer → merge promptly |
 | M | Same, up to 2 rounds; round 2 only for BLOCKING findings |
 | L, data or security paths | Full panel, same round cap |
 
 Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), which wins on conflict. Every size keeps the Hard Gates below: never zero reviews, exact-head green, no unreplied CRITICAL/MAJOR/HIGH finding, never a draft.
 
 - **Fast CI** is the repo's required PR checks. Heavy/e2e suites, daemon real-client runs, visual self-QA and the release gate run at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate): before the batch is released, installed or declared done. A PR that alone ships to users is a single-PR batch and runs that gate itself.
-- **Bots** run after the inner loop and are advisory. Record an unavailable bot only if it was actually requested or posted a usage notice; a never-requested, silent Bugbot needs no entry. Bots are never awaited. When a bot flags something important, answer it like any finding before merge. A real bot finding still gets fixed, in a NEW PR (canon #9) if it lands after merge.
+- **Bots** run after the inner loop and are advisory. No Cursor or Bugbot; never dispatch or request them. Answer already-posted findings; a real finding after merge gets fixed in a NEW PR (canon #9).
 - **Parallel-safe:** tests and builds take their own ports and temp dirs per run; no global one-at-a-time locks.
 
 ## Pick the proof
@@ -154,10 +154,8 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the unfinished behaviour is parked.
 - For merge-authorized endpoints, after a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos (`--admin` skips required checks, so the head pin is what stops a later push merging unchecked), per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
-- Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for an L PR or a very important/core-risk PR (daemon/engine/transport, security, release); never request it for routine XS/S/M PRs. Record `Bugbot: unavailable (usage)` in the PR body only when Bugbot was actually requested and is unavailable, or it posted a real usage/rate/spend-limit notice on this PR. An actual notice must be recorded even on a routine PR where Bugbot was never requested. Routine PRs with no Bugbot activity do nothing Bugbot-related. After an eligible request, run any owed Cursor endpoint pass, then continue to exact-head merge checks in the same turn: no "awaiting Bugbot", watch, grace period or re-review gate. Actual posted findings still follow the normal finding rules.
-- Cursor diff passes are read-only: findings only, never edit the PR branch. Routing: see `/agent-routing` § Routing rules (SSOT).
-- **Request Bugbot only on a ready PR.** Bugbot does not review a draft, even when it is mentioned there (Etan, 2026-11-10, via orc). For an eligible PR, run `gh pr ready <N>` first, then request it. A request posted while the PR was a draft does not count: request once after it is ready.
-- **Never write that a review happened unless it exists** (Etan, 2026-11-10, via orc: a PR sat two days with a note saying a bot had reviewed it; the bot had skipped the draft). Before a PR body or comment says a bot or a reviewer reviewed, find that review or comment on the PR at the current head (`gh pr view <N> --json reviews,comments`). If it is not there, write what is true: `Bugbot: requested, no review yet`, or `unavailable (<reason>)`.
+- Repo bot policy tightens the fleet default panel. No Cursor or Bugbot in the fleet; never request them. Investigate actual posted findings under the normal finding rules.
+- **Never write that a review happened unless it exists** (Etan, 2026-11-10, via orc: a PR sat two days with a note saying a bot had reviewed it; the bot had skipped the draft). Before a PR body or comment says a bot or a reviewer reviewed, find that review or comment on the PR at the current head (`gh pr view <N> --json reviews,comments`). If it is not there, write what is true: `requested, no review yet`, or `unavailable (<reason>)`.
 - `--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.
 - "git log is where you look when you already know something is wrong; the PR page is where you look to find out." Put actionable receipts in the PR body before merge.
 - PR-referenced artifacts must be committed or quoted inline; gitignored `docs.local/` paths alone are not reviewable.
@@ -182,14 +180,12 @@ starts the heavy CI suites, which skip drafts in golems.
 | Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |
 | Copilot | Reviews only on request; automatic review is not enabled. | Don't request it. |
 | Macroscope | Marking ready triggers a correctness check by design; set to manual-only, which should stop it (unverified). | Request it only for a core-risk PR. |
-| Cursor diff pass | T3 `delegate_task` Cursor child (`providerInstanceId: "cursor", model: "default"`), one pointer brief, report to collab. Standard endpoint step for every S-or-larger PR after routed inner review; XS skips. | Once per head, Cursor Auto (no model flag), read-only findings only, before exact-head merge checks. Advisory; never replaces the routed reviewer. Answer findings and record `Cursor pass: head=<sha> findings=<count>`, or `Cursor pass: unavailable (<reason>)` and proceed on errors/quota exhaustion. See [§8a.2](references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only). |
-| Bugbot | Eligibility unchanged: runs only when mentioned for an L or very important/core-risk PR; routine XS/S/M PRs never request it. It ignores a mention on a draft. | Request once if eligible and available, after the PR is ready, unless current-head coverage exists, then run any owed Cursor endpoint pass and continue to merge checks immediately. Record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage/rate/spend-limit notice. An actual notice is recorded even without a request. Routine PR with no activity: no Bugbot action or body entry. Never wait, retry, watch or set "awaiting Bugbot". |
 | Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
 | DeepSource, CodeQL | CI-style checks on every push. | Nothing. |
 
 The 10-minute fallbacks above apply only while the PR is still blocked on something else anyway.
 Never hold a merge for a bot: follow [Merge Cadence](#merge-cadence-risk-sized), and record an unavailable
-bot only if it was requested or posted a usage notice. Never-requested Bugbot silence needs no record. A bot that reviews a draft anyway is a config
+bot only if it was requested or posted a usage notice. Retired bots are never requested. A bot that reviews a draft anyway is a config
 bug: tell ci-hygiene.
 
 ## Decision Table
@@ -202,10 +198,10 @@ bug: tell ci-hygiene.
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
 | PR is draft | Inner loop in progress: finish it, then `gh pr ready <N>`. Visibly held: follow the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns). Never merge a draft |
 | Review conflicts with design | Read the cited design and investigate; dismiss only with explicit evidence |
-| XS/S PR, fast CI green at head, one clean routed review (S: Cursor endpoint pass recorded, step 8) | Merge now (seat with merge authority); no wait for bots or heavy gates |
+| XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
 | PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |
 | PR changes a visible surface | Require per-PR visual proof before merge; queue builder visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
-| Requested bot unavailable, or real usage notice posted | Never wait. For Bugbot, record exactly `Bugbot: unavailable (usage)` in the PR body only for an actual request or real usage/rate/spend-limit notice. Routine XS/S/M PR with no Bugbot activity: no request, wait, body entry or extra step; merge on the routed review |
+| Requested bot unavailable, or real usage notice posted | Never wait. Record the actual limitation and merge only on the required checks and routed review. Cursor and Bugbot are retired. |
 | Release gate says `MERGED_UNRELEASED` mid-batch | Expected; keep merging the batch |
 | PR merged; release + install pending; Etan away | Ship: tag, release, install now; route the hop to `deploy-local-prod` and verify its artifact. Never ask Etan |
 | Remote branch delete or force push | `human-confirm-gate` token required (one-way door: deletes data) |

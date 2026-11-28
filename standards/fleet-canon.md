@@ -14,7 +14,7 @@ with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via o
    The inner loop is sequential: the reviewer starts only after the implementer reports done;
    a reviewer never reads a half-finished diff. Leads route work through delegated tasks.
    Each PR body records its implementer, review rounds and defects.
-   Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or field.
+   Provider eligibility and retired providers follow `/agent-routing` (SSOT).
 
 2. **PR-loop** - Assigned lanes run branch -> commit -> push -> PR -> review -> merge.
    A DONE report without its PR URL is invalid; merge authority follows the approved lane contract.
@@ -32,7 +32,7 @@ with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via o
    Every fresh boot carries the default pin (the current top role from model-roles.json);
    the pin is never removed. A prior session's model never persists into the next.
    A non-default model is used only by explicit per-invocation selection.
-   Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly.
+   Every Agent/Workflow/Task spawn pins its model explicitly.
    Claude concurrency: at most 5 parallel Claude lead tracks fleet-wide, normally 3-4; a slot is an actually
    running turn (idle, snoozed or waiting threads don't count). Claude workers (role ids in model-roles.json): <=2 `claude.judgment` (inside the shared
    7-slot `claude.judgment` ceiling with leads), <=2 `claude.subagent.cheap`, <=4 `claude.subagent.mechanical`.

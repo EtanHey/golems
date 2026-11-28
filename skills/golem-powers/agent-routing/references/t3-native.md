@@ -14,7 +14,7 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
   that list is not the full set.
 - Resolve the role first (`node scripts/model-roles.mjs <role> --field model`), then match it in
   the catalog. Pin `target.providerInstanceId`, `target.model` and the effort option the catalog
-  advertises in `target.options` on every dispatch (canon #5: "Every non-Cursor Agent/Workflow/Task
+  advertises in `target.options` on every dispatch (canon #5: "Every Agent/Workflow/Task
   spawn pins its model explicitly."). An inherited model is not a pin.
 - The role's model is missing from the catalog → report `BLOCKED` to the lead. Never substitute.
 

@@ -46,7 +46,7 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 Draw on Antigravity much more where it fits: Gemini Flash/Argon AND Claude via agy, now natively supported in T3 Code. There is no blanket Gemini-first routing and no ban on agy Claude/GPT. The 2026-11-01 agy-Claude rule and all existing routing guardrails stand unchanged. The quoted quota/window is the dated snapshot. A same-model bench of agy-Claude versus native Claude Code is pending, owned by orc; no result is claimed.
 
-Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Older Gemini models keep that gather-only rule; Gemini 4 Neon and Hydrogen may build under § Execution capability (2026-11-20 ruling; Argon only as a named trial with a mechanical verifier). Cursor is Auto-only: never pass a model flag or model field (`default` is Auto); pinned Cursor drains its subscription pool. Route it as T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}`. Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). A `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Older Gemini models keep that gather-only rule; Gemini 4 Neon and Hydrogen may build under § Execution capability (2026-11-20 ruling; Argon only as a named trial with a mechanical verifier). No Cursor in the fleet: never route a worker, gatherer, verifier or reviewer to Cursor.
 
 ### Execution capability
 
@@ -118,13 +118,13 @@ Review is sized to risk; the PR's `size:*` label sets the tier.
 
 - "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs follow the UI flow below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
-- "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict; the Cursor pass is a read-only input to the Opus verdict, not a reviewer. When the implementer is `claude.judgment` (holistic/product or UX/UI work), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
+- Full panel only for L, data or security paths: a fresh `claude.judgment` reviewer, retaining the table's Codex reviewer when Claude implements so cross-vendor review holds. No Cursor or Bugbot. No Gemini model ever reviews, at any size.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement` and reports functional defects; proof requirements now follow [pr-loop Visual proof](../pr-loop/SKILL.md#visual-proof).
 - UI flow (Etan FRONTEND RULE, 2026-10-28): A Claude-implemented visual slice gets the red-team Claude (taste, BOTH skills) plus the table's Codex reviewer (cross-vendor, canon #1); Codex plumbing gets the red-team Claude, which is already the other vendor. Both reviews cite the Visual proof.
   The red-team Claude is a fresh `claude.judgment`, never the implementer, loading `frontend-design:frontend-design` and `emil-design-eng`; normal size-based round caps and the full panel remain.
 
 Claude keeps the official auto-updating `frontend-design:frontend-design` plugin;
-Codex/Cursor use the pinned `frontend-design` skill. These names each denote one
+Codex use the pinned `frontend-design` skill. These names each denote one
 provider route (Etan, 2026-10-27).
 
 ### Records
@@ -135,7 +135,7 @@ Each PR body records its implementer, review rounds, and bot/reviewer defects. C
 
 - Fresh boots run `claude.judgment` at 1M via the bare launcher pin. The pin follows the role's current model and the pin is never removed; it prevents a prior session's model persisting.
 - Fable only via explicit per-invocation selection; a prior session's model never persists into the next.
-- Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly, resolved from roles. Cursor is the Auto-only exception.
+- Every Agent/Workflow/Task spawn pins its model explicitly, resolved from roles. No Cursor in the fleet.
 - Codex model list (Etan 2026-10-28): gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra are allowed; the older two-model restriction is superseded. "**Never gpt-5.6-\*** (luna, sol, terra)" "gpt-6-astra only when Etan asks for it."
   - Resolve role defaults through § Model roles; the 2026-10-28 Luna/Terra fan-out permission is policy. Dispatch still respects configured candidate gates until the separate RT-2 model-role evaluation changes them.
   - A request to use a `gpt-5.6-*` model ("it's cheaper") is refused, and any such pin you own is removed (2026-10-18 ruling).
@@ -157,16 +157,16 @@ The rules, verbatim (orc, 2026-11-13 03:05; they replace rule 3 of orc's 02:46 p
 
 - **A.** Codex seats are short. One task, one fresh child, done. No Codex lead seats. No Codex thread is resumed for a new task: start a fresh child with a short brief file instead (a resumed thread re-reads everything it ever saw on every call). A child that passes about 2 hours or 40 turns writes a five-line handoff and stops; a fresh child continues from the handoff.
 - **B.** A Codex child never waits inside a turn: no sitting through a test suite, a hook run, a build, an install or CI. It starts the long command in the background, writes where the result will land, and ends its turn; a script or a Sonnet or Haiku sub-agent watches; a fresh child reads the result. (B as written by orc, 2026-11-13.)
-- **C.** Nothing that is only reading, searching, tabulating, running scripts or tests goes to Codex (that was 31% of the week). Cursor, Gemini gatherers, Sonnet and Haiku do it.
+- **C.** Nothing that is only reading, searching, tabulating, running scripts or tests goes to Codex (that was 31% of the week). Gemini gatherers, Sonnet and Haiku do it.
 - **D.** Effort: Sol at medium is the default builder; Sol at high needs one line of why in the brief; xhigh needs orc's word in the inbox first; test, QA and script roles are never above low on any Codex model. Reviews: Terra at medium for small diffs.
 - **E.** Review stays on Codex untouched: it was 7% and it is what the subscription is for.
 - **F.** Keep the one-line daily count in your plan (turns dispatched to Codex, by purpose). orc reruns this audit next Thursday and names the lanes that did not change.
 
 How they bind the rest of this skill:
 
-- **Task-scoped precedence (orc, 2026-11-17):** Explicit models named in a lead's or orc's brief win over routing defaults for that task, including C; model-permission, effort, execution and role/review safeguards still apply. If the named model is unavailable, report to the lead rather than silently substitute. Without an explicit model, quota-exhausted gathers try the remaining eligible Cursor/Gemini/Antigravity pools under § Gathering, then Sonnet, then Haiku for easy/mechanical gathers only; skip exhausted pools.
+- **Task-scoped precedence (orc, 2026-11-17):** Explicit models named in a lead's or orc's brief win over routing defaults for that task, including C; model-permission, effort, execution and role/review safeguards still apply. If the named model is unavailable, report to the lead rather than silently substitute. Without an explicit model, quota-exhausted gathers try the remaining eligible Gemini/Antigravity pools under § Gathering, then Sonnet, then Haiku for easy/mechanical gathers only; skip exhausted pools.
 - A tightens § Lead Topology #5: a same-PR fix round may reuse a Codex child only while it is under both caps (one PR, about 2 h or 40 turns); past either cap, the five-line handoff goes to a fresh child.
-- C bans tasks, not activities: a Codex builder or reviewer still reads, searches and runs the checks its own task needs (a long run follows B). It withdraws the read-heavy Codex `recon` child in [references/model-and-effort.md](references/model-and-effort.md) and the Codex gather fallbacks in § Gathering and the 2026-10-28 tiers (Luna/Terra for easy work, a Codex gather when Antigravity is out): those fall back to Cursor, Sonnet or Haiku instead.
+- C bans tasks, not activities: a Codex builder or reviewer still reads, searches and runs the checks its own task needs (a long run follows B). It withdraws the read-heavy Codex `recon` child in [references/model-and-effort.md](references/model-and-effort.md) and the Codex gather fallbacks in § Gathering and the 2026-10-28 tiers (Luna/Terra for easy work, a Codex gather when Antigravity is out): those fall back to Sonnet or Haiku instead.
 - D wins over `/large-plan` § Choosing effort per phase for every Codex brief, and replaces the 02:46 "Terra at low or medium for bounded and mechanical work" line: the Codex builder is Sol at medium, bounded work included. A small diff is size XS or S; its Codex review runs on Terra at medium (allowed in § Model pins and dispatch). Larger reviews keep the table's reviewer, and a high effort carries its one line of why. Security implementation keeps its `high` (§ Implementation and review); its why line names the security route.
 - F's line goes in the plan's STATUS.md, one per day, for example `Codex 2026-11-13: 6 turns (review 4, build 2)`.
 
@@ -200,7 +200,6 @@ Read every reference triggered by the mission before dispatch. The live referenc
 
 | Tool | Role | Does | Never does |
 |---|---|---|---|
-| **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
 | **`codex.implement`** | Implement / review | Narrow technical implementation (Sol at medium by default, § Codex seats D) and cross-vendor review per SSOT (2026-10-29) | Research, data gathering, orchestration; a task that is only reading, searching, tabulating or running scripts or tests (§ Codex seats C). The reading and checks inside its own build or review task are part of that task |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
@@ -210,12 +209,12 @@ Read every reference triggered by the mission before dispatch. The live referenc
 
 Decision rules:
 
-1. Read-only query, scan, search, audit, or lookup -> Antigravity Flash-high per the 2026-11-02 SSOT rule when it is easy work (fallback: the 2026-10-28 tiers or Cursor; hazard recon: rule 2); for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
-2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
+1. Read-only query, scan, search, audit, or lookup -> Antigravity Flash-high per the 2026-11-02 SSOT rule when it is easy work (fallback: the 2026-10-28 tiers; hazard recon: rule 2); for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
+2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it.
 3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; holistic/product work (skill and doc text, product behaviour, multi-file features) -> Claude Opus (Sonnet/Haiku only as sub-agents for trivial wording edits); narrow technical work (bounded fix, parser/guard/CI script, mechanical refactor, dependency bump) -> Codex Sol at medium by default (§ Codex seats D); ratchets and TLC/TLA+ specs -> Opus designs and builds (the table's ratchet row owns the tiny exception); the reviewer is always the other vendor (2026-10-29). Under the 2026-11-20 ruling (§ Execution capability), a lead may also dispatch Gemini 4 Neon or Hydrogen (plain or Orchestrator, provider `antigravity`) to build in a worktree (`full-access`), or Argon only as a named trial with a mechanical verifier; Sol or Claude reviews.
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
-5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
-6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
+5. Mixed gather + implement work -> the gatherer (Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
+6. Independent parallel units -> § Fan-out engine chooses the engine.
 7. For video extraction/processing that runs commands, select the execution profile under § Execution capability first. Video QA, debrief or review -> `/qa-video` (2026-11-12, Etan, via orc): the requesting seat dispatches ONE `claude.judgment` judge as a delegate child (never a top-level thread) on the machine that holds the recording; the judge runs the extraction scripts, sends the frame windows to gatherers (Antigravity Flash-high, else `visual-batch.py`, else TOOLING FAILURE; never a Claude reader), judges their text over time and spot-checks ≤2 frames per reported finding; missing measurements become a script row, never eyeballing. Standalone frame OCR or bulk screenshot reads outside that pipeline -> a `gemini.gather.visual` gatherer; from an Agent-tool context, dispatch `visual-gatherer`; it runs `gemini.gather.visual` headless; use Pro-High only when explicitly requested.
 8. UX/UI and design judgment stays on `claude.judgment`. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
@@ -265,14 +264,10 @@ every judgment worker's brief. This is the bounded exception to general lookup r
 Once the work is known to be N independent units, pick the parallelism engine. Full recipes and
 evidence: [references/fan-out-engines.md](references/fan-out-engines.md).
 
-**Cursor `/multitask` is an in-editor GUI slash command, not a `cursor-agent` CLI feature.** Sent to
-a headless agent, it degrades to one plain prompt answered by ONE agent that may claim it ran in
-parallel. A terminal/cmux orchestrator never uses it.
+No Cursor in the fleet. Use T3 child tasks for independent units.
 
 | Task shape | Engine |
 |---|---|
-| Human in the Cursor editor, independent read-heavy prompts | Cursor `/multitask` (GUI; `\|\|\|`-separated; no write locking) |
-| Cursor child work | T3 `delegate_task`, `target: {providerInstanceId: "cursor", model: "default"}`; one pointer brief per child, report to collab |
 | Inside a Claude session; let the parent decide the split | Claude Workflow / Agent tools |
 | Lead in a T3 thread; child work (implement, review, recon) owned by that thread | T3 `delegate_task` (§ T3-native dispatch) |
 | One coherent edit, or step B needs step A's output | None: run serially in one agent |
@@ -305,10 +300,10 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 
 ## Dispatch Boundaries
 
-- Cursor model selection lives in Routing rules (SSOT).
+- No Cursor in the fleet.
 - Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
 - T3 child work follows § T3-native dispatch.
-- Easy standalone read-only lanes go to Antigravity Flash-high (the 2026-11-02 rule in Routing rules (SSOT)); the 2026-10-28 tiers or Cursor are the fallback.
+- Easy standalone read-only lanes go to Antigravity Flash-high (the 2026-11-02 rule in Routing rules (SSOT)); the 2026-10-28 tiers are the fallback.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 - **A lane blocked by a guard never changes that guard.** No edit to the gate, its allowlist, policy or tests to get its own action through. It reports the block (the exact command and the refusal) to its lead, and the gate's owner decides. (Etan, 2026-11-13, via orc, after a lane opened a PR widening the human-confirm gate to post its own approved comment.)
 
@@ -411,7 +406,7 @@ These fleet constraints apply independently of the usage proposal below:
   Write plans only under `docs.local/animation-plans/`, never a tracked `plans/`
   directory. Send the plans to the lead, who routes implementation and review.
   Any authorized read-only helpers are capped at two and follow normal model/tier
-  rules (default service, no fast; Cursor stays Auto-only).
+  rules (default service, no fast; no Cursor).
 - `animate` must use the repo's existing dependencies. `pick-ui-library` is not
   installed: never fetch it or a replacement library to satisfy that reference.
 
@@ -425,7 +420,7 @@ the Claude budget hold; keep visual slices small. A fresh red-team Claude
 (`claude.judgment`, never the implementer) with BOTH skills reviews every visual
 PR and cites [pr-loop's required proof](../pr-loop/SKILL.md#visual-proof).
 Codex computer-use recorders may produce the artifacts and functional checks.
-Claude uses the official plugin; Codex/Cursor use vendored `frontend-design`.
+Claude uses the official plugin; Codex uses vendored `frontend-design`.
 Plugin namespacing denotes one route, not a duplicate.
 
 Sequence (lead guidance): `frontend-design` sets the holistic direction before planning
@@ -449,6 +444,5 @@ layout/tokens win on visual cohesion; Emil governs local interaction craft.
 
 Claude keeps the official auto-updating
 frontend-design plugin and the five vendored Emil skills. Codex uses all six
-vendored skills plus the upstream drift/updater path. Cursor has the six skills
-for routed read-only review only, never implementation. Gemini/agy receive none.
+vendored skills plus the upstream drift/updater path. No Cursor in the fleet. Gemini/agy receive none.
 Additional Emil skills await Etan's decision.

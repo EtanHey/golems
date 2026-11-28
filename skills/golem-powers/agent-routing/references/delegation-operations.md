@@ -31,7 +31,6 @@ Delivery syntax is harness-specific:
 ```text
 Codex, only when verified: /goal Read and execute this goal file until complete: /abs/path/to/goal.md
 Gemini/Antigravity: Read and execute this goal file until complete: /abs/path/to/goal.md
-Cursor: use its verified goal command or a plain file-contract message; verify accepted/working state before resending a duplicated footer prompt.
 ```
 
 ## Monitoring and Recovery
@@ -40,7 +39,7 @@ Fleet law for approved queues, permission parking, and route-through-leads lives
 
 Every cmux monitoring cycle checks:
 
-- Is the lead burning context on Cursor/Codex work while workers sit idle?
+- Is the lead burning context on worker work while workers sit idle?
 - Are worker surfaces alive? Recover a failed managed lane on a new surface within 60 seconds,
   redeliver its original goal, and notify the lead; do not wait for the lead to notice.
 - cmux adapter: does every dispatching lead have its own monitor loop? (T3 children need none: completion wakes the parent.)

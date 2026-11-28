@@ -56,8 +56,9 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /escalation path, not a gate/);
   assert.match(text, /`\/pr-loop` bot and PR reviewers are separate/);
   assert.match(text, /`\/collab-monitor`/);
-  assert.match(text, /Auto-only.*never pass a model flag or model field/);
-  assert.match(text, /Every non-Cursor Agent\/Workflow\/Task spawn pins its model explicitly/);
+  assert.match(text, /No Cursor in the fleet/);
+  assert.doesNotMatch(text, /providerInstanceId: "cursor"|Cursor is Auto-only/);
+  assert.match(text, /Every Agent\/Workflow\/Task spawn pins its model explicitly/);
   assert.match(text, /claude.judgment.*1M/);
   assert.match(text, /pin is never removed/);
   assert.match(text, /Claude concurrency .*fleet canon #5 owns the numbers/);
@@ -187,7 +188,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   assert.ok(sizing, 'review sizing section is required');
   for (const rule of [
     '"XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab)',
-    '"Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab)',
+    'No Cursor or Bugbot. No Gemini model ever reviews, at any size.',
     'M: up to 2 rounds',
     '"a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer."',
     '"That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI."',
