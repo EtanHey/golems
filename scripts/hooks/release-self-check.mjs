@@ -8,10 +8,12 @@ export function checkReleaseHooks({ source, python, home, entries, expand }) {
   const specimens = [
     ['tmp-block', { tool_name: 'Write', tool_input: { file_path: '/tmp/golems-release-probe' } }],
     ['heredoc-guard', { tool_name: 'Bash', tool_input: { command: 'cat <<EOF\n$(golems-release-probe)\nEOF' } }],
+    ['secret-read-guard', { tool_name: 'Bash', tool_input: { command: `cat ${path.join(home, '.codex/auth.json')}` } }],
     ['pre_tool_use', { tool_name: 'Write', tool_input: { file_path: path.join(home, '.env') } }],
     ['human-confirm-gate', { tool_name: 'Write', tool_input: { file_path: path.join(home, '.config/golems/human-confirm/token.json') } }],
   ];
-  const gates = { 'tmp-block': 'tmp-block', 'heredoc-guard': 'heredoc-guard', pre_tool_use: 'git-guardian', 'human-confirm-gate': 'human-confirm' };
+  const gates = { 'tmp-block': 'tmp-block', 'heredoc-guard': 'heredoc-guard', 'secret-read-guard': 'secret-read-guard',
+    pre_tool_use: 'git-guardian', 'human-confirm-gate': 'human-confirm' };
   let count = 0;
   for (const [id, denied] of specimens) {
     const entry = entries.find(e => e.id === id);
@@ -27,7 +29,8 @@ export function checkReleaseHooks({ source, python, home, entries, expand }) {
       const payload = { ...tool, cwd: home, session_id: 'golems-public-self-check' };
       const scratch = mkdtempSync(path.join(home, '.heredoc-guard-probe-'));
       const env = { ...process.env, HOME: home,
-        HEREDOC_GUARD_LEDGER: path.join(scratch, 'denials.jsonl') };
+        HEREDOC_GUARD_LEDGER: path.join(scratch, 'denials.jsonl'),
+        SECRET_READ_GUARD_LEDGER: path.join(scratch, 'secret-denials.jsonl') };
       for (const key of ['WEAVE_ALLOW_TMP', 'CLAUDE_WORKER', 'GOLEM_ROLE', 'GOLEMS_WORKER', 'GIT_GUARDIAN_LIB', 'PYTHONPATH', 'PYTHONHOME']) delete env[key];
       let result;
       try {

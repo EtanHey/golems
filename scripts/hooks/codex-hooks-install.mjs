@@ -28,6 +28,7 @@ function regular(p, directory = false) {
 // The adapter's gates. Only human-confirm carries an owner anchor pin; like its
 // Claude registration it is refused (never registered) while that pin is empty.
 const CODEX_GATES = { "m1-window-gate": undefined, "tmp-block": undefined, "git-guardian": undefined, "heredoc-guard": undefined,
+  "secret-read-guard": undefined,
   "human-confirm": "skills/golem-powers/human-confirm-gate/anchor.pins" };
 const STATUS_MESSAGES = {
   "tmp-block": "golems tmp-block: keeps work out of /tmp",
@@ -35,6 +36,7 @@ const STATUS_MESSAGES = {
   "human-confirm": "golems human-confirm: Etan approves actions that can't be undone",
   "heredoc-guard": "golems heredoc-guard: stops hidden commands in here-documents",
   "m1-window-gate": "golems m1-window-gate: waits while the M1 is installing",
+  "secret-read-guard": "golems secret-read-guard: stops commands that would print a secret",
 };
 
 export function planCodexHooks({ manifest, host, live, source: releaseSource, codexHome, python = "python3", refused = [] }) {
@@ -44,12 +46,12 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   for (const list of Object.values(manifest.codex_hosts)) {
     const gates = Array.isArray(list) ? list.map(e => e.gate) : [];
     if (!Array.isArray(list) || new Set(gates).size !== list.length || !gates.includes("tmp-block") ||
-        !gates.includes("git-guardian") || list.length > 5) throw new Error("Invalid Codex policy manifest");
+        !gates.includes("git-guardian") || list.length > 6) throw new Error("Invalid Codex policy manifest");
     for (const e of list) {
       if (!Object.hasOwn(CODEX_GATES, e.gate) || e.requiresPin !== CODEX_GATES[e.gate] ||
           (e.mode !== undefined && (e.gate !== "m1-window-gate" || e.mode !== "seat")) ||
           e.source !== "scripts/hooks/codex-policy-hook.py" ||
-          e.matcher !== (e.gate === "m1-window-gate" ? "^Bash$" : "^(Bash|apply_patch)$") || e.timeout !== 10) throw new Error("Invalid Codex policy entry");
+          e.matcher !== (["m1-window-gate", "secret-read-guard"].includes(e.gate) ? "^Bash$" : "^(Bash|apply_patch)$") || e.timeout !== 10) throw new Error("Invalid Codex policy entry");
     }
   }
   const entries = listed.filter(e => !(host === "client" && e.ownerOnly) && !refused.includes(e.gate));

@@ -334,12 +334,12 @@ jobs:
         with:
           # Exclude root-owned locks and incomplete downloads.
           path: ${{ runner.temp }}/apt-archives/*.deb
-          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-python-zsh-jq-lsof-ffmpeg-v1
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-python-zsh-jq-lsof-ffmpeg-ripgrep-v2
 
       # qa-video Python safety tests need ffmpeg/ffprobe to render synthetic media.
       - name: Install launcher harness tools and ffmpeg
         timeout-minutes: 10
-        run: sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh zsh jq lsof ffmpeg
+        run: sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh zsh jq lsof ffmpeg ripgrep
 
       - name: Run golem-powers Python skill suites
         run: scripts/ci/run-skill-tests.sh
