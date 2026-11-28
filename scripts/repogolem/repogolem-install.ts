@@ -83,10 +83,10 @@ function policySeatText(text: string): string {
     return changed ? document.toString() : text;
   } catch { throw new Error('machine seat MCP deny policy failed; values hidden; nothing written'); }
 }
-function verifySeats(state: any, seats: string, current?: { target: string; text: string }) {
+function verifySeats(state: any, seats: string, current?: { target: string; text: string }): { kind: 'machine-view' } | { kind: 'regular-file'; text: string } | undefined {
   const stat = present(seats), pending = state.phase === 'installing';
   const target = state.seatTarget ?? state.config;
-  if (stat?.isSymbolicLink() && stat.uid === process.getuid?.() && readlinkSync(seats) === target) {
+  function verifyTarget() {
     if (state.machineDigest) {
       const text = present(target) ? readFileSync(target, 'utf8') : null;
       const observed = text === null ? null : digest(text);
@@ -95,6 +95,25 @@ function verifySeats(state: any, seats: string, current?: { target: string; text
         const diagnostic = current && text !== null ? `; ${changedMachineKeys(text, current.text)}` : '';
         throw new Error(`installed machine seat view changed; ${current ? 'install' : 'rollback'} refused${diagnostic}`);
       }
+    }
+  }
+  if (stat?.isSymbolicLink() && stat.uid === process.getuid?.() && readlinkSync(seats) === target) {
+    if (verifyTarget()) return { kind: 'machine-view' };
+  } else if (current && stat?.isFile()) {
+    safePath(dirname(dirname(seats)), seats);
+    const text = readFileSync(seats, 'utf8');
+    const originalPendingSeat = pending && state.hadSeats && digest(text) === state.originalSeatDigest;
+    // A failed first build has not written a target; existing targets still need the P1 check.
+    if (!originalPendingSeat || present(target)) verifyTarget();
+    try {
+      const actual: unknown = parseYaml(text), wanted: unknown = parseYaml(current.text);
+      if (actual && typeof actual === 'object' && !Array.isArray(actual) && isDeepStrictEqual(actual, wanted)) {
+        return { kind: 'regular-file', text };
+      }
+    } catch { /* Refuse with a value-free diagnostic below. */ }
+    // Preserve recovery of an interrupted first install's original registry.
+    if (!originalPendingSeat) {
+      throw new Error(`installed seat link changed; reconciliation required; ${changedMachineKeys(text, current.text)}`);
     }
   // A pending attempt may have unlinked the original file before linking its view.
   } else if (!pending || (stat && (!state.hadSeats || !stat.isFile() || digest(readFileSync(seats, 'utf8')) !== state.originalSeatDigest))) {
@@ -128,7 +147,11 @@ export function runInstall(argv: string[]): number {
   if (rollback) {
     if (!previous) throw new Error('no installer backup to roll back');
     const clean = removeManaged(before, previous);
-    if (dry) { console.log('would remove managed block and restore seat backup, preserving shell edits'); return 0; }
+    if (dry) {
+      console.log('would remove managed block and restore seat backup, preserving shell edits');
+      for (const entry of previous.seatReconciliations ?? []) console.log(`reconciliation backup retained: ${entry.backup}`);
+      return 0;
+    }
     safePath(home, join(root, 'zshrc.before')); safePath(home, join(root, 'seats.before'));
     const original = readFileSync(join(root, 'zshrc.before'), 'utf8');
     if (previous.originalShellDigest && digest(original) !== previous.originalShellDigest) throw new Error('shell backup changed; rollback refused');
@@ -143,7 +166,9 @@ export function runInstall(argv: string[]): number {
     }
     for (const name of Object.keys(previous.agentLinks ?? {})) rmSync(join(agentDir,name),{force:true});
     rmSync(statePath);
-    console.log('restored shell and seat registry; installed runtime retained'); return 0;
+    console.log('restored shell and seat registry; installed runtime retained');
+    for (const entry of previous.seatReconciliations ?? []) console.log(`reconciliation backup retained: ${entry.backup}`);
+    return 0;
   }
   if (!config || !existsSync(config)) throw new Error('install requires an existing --config or REPOGOLEM_CONFIG');
   config = resolve(config);
@@ -187,7 +212,7 @@ export function runInstall(argv: string[]): number {
   }
   if (reconciled) {
     previous.machineDigest = digest(seatText);
-    console.log('machine view reconciled: matches current render');
+    console.log(reconciled.kind === 'regular-file' ? 'regular seat reconciled: parsed content matches current render' : 'machine view reconciled: matches current render');
   }
   if (dry) { console.log(`would install runtime and CLI; link seat registry to ${seatTarget}; swap ${shell}; no generate or op`); return 0; }
   mkdirSync(root, { recursive: true, mode: 0o700 }); chmodSync(root, 0o700);
@@ -196,7 +221,18 @@ export function runInstall(argv: string[]): number {
     atomic(join(root, 'zshrc.before'), before);
     if (existsSync(seats)) atomic(join(root, 'seats.before'), oldText);
   }
-  const state = { ...previous, config, seatTarget, managedBlock: managedBlock(config), phase: 'installing', agentLinks:{...previous?.agentLinks,...agentLinks},
+  const seatReconciliations = [...(previous?.seatReconciliations ?? [])];
+  if (reconciled?.kind === 'regular-file') {
+    safePath(home, seats);
+    if (readFileSync(seats, 'utf8') !== reconciled.text) throw new Error('seat changed during reconciliation; install refused');
+    const at = new Date().toISOString();
+    const directory = mkdtempSync(`${seats}.backup-${at.replaceAll(':', '-')}-`);
+    chmodSync(directory, 0o700);
+    const backup = join(directory, 'config.yaml');
+    writeFileSync(backup, reconciled.text, { mode: 0o600, flag: 'wx' });
+    seatReconciliations.push({ path: seats, backup, at });
+  }
+  const state = { ...previous, config, seatTarget, seatReconciliations, managedBlock: managedBlock(config), phase: 'installing', agentLinks:{...previous?.agentLinks,...agentLinks},
     machineDigest: seatTarget === config ? null : digest(seatText), previousMachineDigest: previous?.phase === 'installing' ? previous.previousMachineDigest : previous?.machineDigest,
     hadSeats: previous?.hadSeats ?? existsSync(seats), hadShell: previous?.hadShell ?? existsSync(shell),
     shellMode: previous?.shellMode ?? (present(shell)?.mode ?? 0o600) & 0o777,
@@ -241,13 +277,27 @@ export function runInstall(argv: string[]): number {
   chmodSync(bundle, 0o600);
   const bin = join(home, '.local/bin/repogolem'); safePath(home, bin);
   atomic(bin, `#!/bin/sh\nexec bun --no-install ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
+  // AIDEV-NOTE: Pre-existing save window: a target edit during the CLI build can be
+  // overwritten here without a backup; target validation happens before the build.
   if (seatTarget !== config) atomic(seatTarget, seatText);
   if (Object.keys(agentLinks).length) { safePath(home,agentDir); mkdirSync(agentDir,{recursive:true,mode:0o700}); }
   for (const name of Object.keys(previous?.agentLinks ?? {})) if (!Object.hasOwn(agentLinks,name)) rmSync(join(agentDir,name),{force:true});
   for (const [name,target] of Object.entries(agentLinks)) if (!present(join(agentDir,name))) symlinkSync(target,join(agentDir,name));
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
-  if (!present(seats)?.isSymbolicLink()) { rmSync(seats, { force: true }); symlinkSync(seatTarget, seats); }
+  if (reconciled?.kind === 'regular-file') {
+    // AIDEV-NOTE: This late refusal preserves the edited seat but shell/target are already
+    // written; retry and rollback can require manual reconciliation of the changed seat.
+    safePath(home, seats);
+    if (!present(seats)?.isFile() || readFileSync(seats, 'utf8') !== reconciled.text) throw new Error('seat changed during reconciliation; install refused');
+  }
+  if (!present(seats)?.isSymbolicLink()) {
+    const temporary = `${seats}.new-${process.pid}`;
+    symlinkSync(seatTarget, temporary);
+    // AIDEV-NOTE: An editor save between the recheck and renameSync can still be replaced.
+    // The pre-check bytes are in the reconciliation backup; a save in this residual window is not.
+    try { renameSync(temporary, seats); } finally { rmSync(temporary, { force: true }); }
+  }
   atomic(statePath, JSON.stringify({ ...state, phase: 'installed', agentLinks }) + '\n');
   console.log('installed cache-only runtime and repogolem CLI; backups and recovery journal saved; generate not run');
   return 0;

@@ -31,6 +31,7 @@ PY
     before="$(snapshot "$b")"
     gitdir="$b/.git"
     if [[ "$shape" == hook ]]; then gitdir="$(clean_git -C "$victim" rev-parse --absolute-git-dir)"; fi
+    python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT" # raw call skips the aging wrapper
     run timeout -k 3 30 env GIT_DIR="$gitdir" GIT_INDEX_FILE="$gitdir/index" \
       "$GC_SOURCE" --apply --idle-hours 0 --repo "$a"
     [ "$status" -eq 0 ]

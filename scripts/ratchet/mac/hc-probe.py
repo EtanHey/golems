@@ -6,21 +6,25 @@ with the real interpreter. The lease is scoped to a real open PR (gh is read-onl
   A  no token, own lease to the PR head  -> allow
   A2 plain force to the PR branch        -> deny
   A3 lease to a foreign repository URL   -> deny
-  B  lead token issued by the installed golems-lead-confirm
-  C  the same lease with that token      -> allow
+  B  token-only checkout (local fetch, real PR push URL) without token -> deny
+     lead token issued by the installed golems-lead-confirm
+  C  that checkout with the token        -> allow
      issued token and signature gone, one matching new spent marker -> OK
-  D  the same lease again (own branch)   -> allow
+  D  the same token-only lease again     -> deny
+     original own-branch checkout replay -> allow
   E  a lease to master                   -> deny
-Prints one JSON line and exits 0 only when all eight steps hold. Run it with HOME set to the home the
+Prints one JSON line and exits 0 only when all ten steps hold. Run it with HOME set to the home the
 hook was installed into: local-run.sh points it at a scratch HOME, live-rows.sh at the real one.
 """
 import argparse
+from contextlib import contextmanager
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import tempfile
 from pathlib import Path
 
 
@@ -90,6 +94,34 @@ def consumed_token(home, before_issue, before_command):
     return 'OK' if ok else 'NOT_SPENT', summary, diagnostics(run, started)
 
 
+@contextmanager
+def token_checkout(repo, branch):
+    """A disposable real checkout outside the unsigned own-lease route.
+
+    Lead scope uses the push URL; the unsigned exception also requires an
+    identical fetch URL. Keep the real PR destination, but make fetch local.
+    Never change the caller's remotes (this probe also runs on the live tier).
+    """
+    def git(*args):
+        return subprocess.run(['/usr/bin/git', *args], capture_output=True, text=True,
+                              check=True, timeout=30).stdout.strip()
+
+    push_url = git('-C', repo, 'remote', 'get-url', '--push', '--all', 'origin')
+    scratch = Path(repo) / 'docs.local'
+    scratch.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='hc-token-', dir=scratch) as directory:
+        checkout = str(Path(directory, 'repo').resolve())
+        git('clone', '--shared', '--no-checkout', repo, checkout)
+        git('-C', checkout, 'symbolic-ref', 'HEAD', 'refs/heads/' + branch)
+        git('-C', checkout, 'remote', 'set-url', 'origin', str(Path(repo).resolve()))
+        git('-C', checkout, 'remote', 'set-url', '--push', 'origin', push_url)
+        yield checkout
+
+
+def run_issuer(argv):
+    return subprocess.run(argv, capture_output=True, text=True, timeout=60)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--repo', required=True, help='a checkout on the PR branch whose origin push URL is github.com')
@@ -120,22 +152,25 @@ def main():
     record('A2_plain_force', feed(hook, f'git push --force origin HEAD:refs/heads/{args.branch}', args.repo, session))
     foreign = lease.replace(' origin ', ' https://github.com/pingdotgg/t3code.git ', 1)
     record('A3_foreign', feed(hook, foreign, args.repo, session))
-    before_issue = token_files(home)
-    # Exec the issuer the way a lead does (its own shebang), so its side effects are real.
-    started = time.monotonic()
-    issued = subprocess.run([args.issuer, args.repo, '--ref', f'refs/heads/{args.branch}', '--sha', args.sha,
-                             '--session', session], capture_output=True, text=True, timeout=60)
-    steps['B_issue'] = ('OK' if issued.returncode == 0 else 'REFUSED',
-                        f'rc={issued.returncode} ' + (issued.stdout + issued.stderr).replace('\n', ' ')[:160])
-    details['B_issue'] = diagnostics(issued, started)
-    before_command = token_files(home)
-    record('C_token', feed(hook, lease, args.repo, session))
-    record('C_spent', consumed_token(home, before_issue, before_command))
-    # Own-branch rule covers replay; token replay protection stays in unit test test_lead_issuer.LeadTokenThroughTheGate.test_issued_token_authorizes_exactly_its_lease_once.
-    record('D_replay', feed(hook, lease, args.repo, session))
+    with token_checkout(args.repo, args.branch) as token_repo:
+        # Fail closed if the supposedly token-only route gains an unsigned exception.
+        record('B_no_token', feed(hook, lease, token_repo, session))
+        before_issue = token_files(home)
+        # Exec the installed issuer with its own shebang; no synthetic capability.
+        started = time.monotonic()
+        issued = run_issuer([args.issuer, token_repo, '--ref', f'refs/heads/{args.branch}',
+                             '--sha', args.sha, '--session', session])
+        steps['B_issue'] = ('OK' if issued.returncode == 0 else 'REFUSED',
+                            f'rc={issued.returncode} ' + (issued.stdout + issued.stderr).replace('\n', ' ')[:160])
+        details['B_issue'] = diagnostics(issued, started)
+        before_command = token_files(home)
+        record('C_token', feed(hook, lease, token_repo, session))
+        record('C_spent', consumed_token(home, before_issue, before_command))
+        record('D_replay', feed(hook, lease, token_repo, session))
+    record('D_own_replay', feed(hook, lease, args.repo, session))
     record('E_master', feed(hook, master, args.repo, session))
     expected = dict(A_own_lease='ALLOW', A2_plain_force='DENY', A3_foreign='DENY',
-                    B_issue='OK', C_token='ALLOW', C_spent='OK', D_replay='ALLOW', E_master='DENY')
+                    B_no_token='DENY', B_issue='OK', C_token='ALLOW', C_spent='OK', D_replay='DENY', D_own_replay='ALLOW', E_master='DENY')
     ok = all(steps[key][0] == want for key, want in expected.items())
     first_failure = next((key for key, want in expected.items() if steps[key][0] != want), None)
     if first_failure:
