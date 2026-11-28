@@ -45,9 +45,9 @@ PY
   [ "$status" -eq 1 ]
   [[ "$(cat "$GOLEMS_WORKTREE_GC_NOTIFY")" == 'ALARM '* ]]
 }
-@test "wiring: floor includes archiver fix" {
+@test "wiring: floor includes fresh-worktree safety fix" {
   run sed -n '/^GC_MIN_SAFE_SHA=/p' "$REPO_ROOT/scripts/worktree-gc-nightly.sh"
-  [ "$output" = 'GC_MIN_SAFE_SHA=c2fb389974ebc18df088a28e08f011220edd2b8f' ]
+  [ "$output" = 'GC_MIN_SAFE_SHA=e0ea3fd5a5cafb51fd70e5ccf23a296c80c60149' ]
 }
 @test "wiring: clean zero-removal night stays silent" {
   prepare

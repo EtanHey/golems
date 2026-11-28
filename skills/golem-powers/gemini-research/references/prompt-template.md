@@ -24,7 +24,9 @@ document/question pair, and fill every cell from actually reading the file:
 | document | question | readable (yes/no) | first heading or line read | answer |
 | --- | --- | --- | --- | --- |
 Only an affirmative, verified read passes: `readable: yes` plus the heading or line
-actually read and the answer to its admission question. The author checks every
+actually read and the answer to its admission question. In the answer cell, write the
+exact text from the file, copying only the answer, with no added notes, units or
+qualifiers that are not part of it. The author checks every
 answer and first-line string against a private key before accepting the result. Any other row (readable: no, blank, missing, empty, truncated,
 unreadable) means that file failed: output only this table and a MISSING FILES
 list, and stop.
@@ -76,8 +78,13 @@ unknowns, struck claims, missing deliverables and the next measurement plan.
 Author-only preparation: --emit removes this entire section from the researcher
 prompt. Send only the emitted text to Gemini or NotebookLM; retain this record.
 Copy each exact first heading/line and answer from the real source into this
-private JSON key (one row per admission question). Never include it in researcher
-text. If an answer occurs elsewhere in the emitted text, choose another question.
+private JSON key (one row per admission question). Each answer is a complete,
+self-contained table cell, line (list or heading marker dropped), or whole value after
+a `label:` in its file, stored exactly (bold and backticks dropped); never part of a
+longer cell. The whole cell must be nothing but the answer: if it also carries a
+parenthetical, note or qualifier, or the natural answer sits inside a longer cell,
+choose another question. Never include the key in
+researcher text. If an answer occurs elsewhere in the emitted text, choose another question.
 ```admission-key
 [
   {"document":"<Verified findings + struck claims document title>","question":"<question from the verified findings file>","answer":"<exact verified answer>","first_line":"<exact verified first line>"},

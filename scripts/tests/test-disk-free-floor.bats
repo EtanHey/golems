@@ -10,6 +10,7 @@ load lib/worktree-gc-fixtures
   git -C "$repo" worktree add -q --detach "$repo/.worktrees/hooks-live" origin/main
   git -C "$repo" worktree add -q --detach "$repo/.worktrees/group/deep" origin/main
   git -C "$repo" worktree add -q --detach "$TEST_ROOT/runtime" origin/main
+  python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT" # raw call skips the aging wrapper
   (cd "$live" && exec sleep 60) &
   holder=$!
   run env RATCHET_GITS_ROOT="$TEST_ROOT" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
@@ -38,6 +39,7 @@ load lib/worktree-gc-fixtures
   printf '#!/bin/sh\nprintf "Filesystem 1024-blocks Used Available Capacity Mounted\\nfixture 99999999 0 13631488 0 fixture\\n"\n' > "$stub/df"
   printf '#!/bin/sh\nexit 127\n' > "$stub/brainlayer"
   chmod +x "$stub/df" "$stub/brainlayer"
+  python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT" # raw call skips the aging wrapper
   run env RATCHET_GITS_ROOT="$TEST_ROOT" WORKTREE_GC_IDLE_HOURS=0 PATH="$stub:$PATH" \
     node --input-type=module -e '
       const root=process.argv[1];
@@ -79,6 +81,7 @@ load lib/worktree-gc-fixtures
   b="$(make_fixture_repo bystander)"; victim="$(add_branch_worktree "$b" victim)"
   [ "$(git -C "$a" rev-parse --show-toplevel)" = "$a" ]
   [ "$(git -C "$b" rev-parse --show-toplevel)" = "$b" ]
+  python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT" # raw call skips the aging wrapper
   before="$(find "$b" -type f -exec shasum -a 256 {} + | LC_ALL=C sort)"
   admin="$(git -C "$victim" rev-parse --absolute-git-dir)"
   run timeout -k 3 30 env RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
@@ -124,6 +127,7 @@ STUB
     mv "$repo" "$TEST_ROOT/gits/measured$i"
     add_branch_worktree "$TEST_ROOT/gits/measured$i" eligible >/dev/null
   done
+  python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT" # raw call skips the aging wrapper
   run env PATH="$TEST_ROOT/bin:$PATH" RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
     "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
   [ "$status" -eq 0 ]

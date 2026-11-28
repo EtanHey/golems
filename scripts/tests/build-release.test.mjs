@@ -4,7 +4,78 @@ import { createHash } from 'node:crypto';
 import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildRelease, createManifest } from '../release/build-release.mjs';
+import { buildRelease, createManifest, shipped } from '../release/build-release.mjs';
+import { closureViolations, scriptReferences } from './release-closure.mjs';
+
+test('every shipped script includes its repository dependencies in the release', () => {
+  const repo = new URL('../../', import.meta.url);
+  // Re-run the identical scanner against committed baseline objects and policy.
+  const baseline = process.env.RELEASE_CLOSURE_BASE;
+  let files;
+  if (baseline) {
+    const records = execFileSync('git', ['ls-tree', '-rz', baseline], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean).map(record => {
+      const [metadata, file] = record.split('\t');
+      return { file, oid: metadata.split(' ')[2] };
+    });
+    const blobs = execFileSync('git', ['cat-file', '--batch'], { cwd: repo, input: records.map(row => row.oid + '\n').join(''), maxBuffer: 128 * 1024 * 1024 });
+    let offset = 0;
+    files = new Map(records.map(({ file }) => {
+      const end = blobs.indexOf(10, offset);
+      const length = Number(blobs.subarray(offset, end).toString().split(' ')[2]);
+      const source = blobs.subarray(end + 1, end + 1 + length).toString();
+      offset = end + length + 2;
+      return [file, source];
+    }));
+  } else {
+    const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean);
+    files = new Map(paths.map(file => [file, readFileSync(new URL(file, repo), 'utf8')]));
+  }
+  const policy = baseline && JSON.parse(execFileSync('git', ['show', `${baseline}:scripts/release/shipped-paths.json`], { cwd: repo, encoding: 'utf8' }));
+  const selected = policy ? file => (policy.support.includes(file) || policy.roots.some(root => file.startsWith(root))) &&
+    !file.split('/').some(part => policy.excluded_parts.includes(part)) && !new RegExp(policy.excluded_files).test(file) : shipped;
+  // No checkout-only exceptions are currently needed by these literal forms.
+  // Any future exception must be an exact "source -> target": "reason" pair.
+  const checkoutOnly = {};
+  expect(closureViolations(files, selected, checkoutOnly)).toEqual([]);
+});
+
+test.each([
+  ['scripts/run.sh', 'source "$SCRIPT_DIR/lib/helper.py"'],
+  ['scripts/run.bash', '. "${HERE}/lib/helper.py"'],
+  ['scripts/run.sh', 'python3 "$SCRIPT_DIR/lib/helper.py"'],
+  ['scripts/lib/run.sh', 'python3 "$SCRIPT_DIR/lib/helper.py"'],
+  ['scripts/run.sh', 'node ./lib/helper.py'],
+  ['scripts/run.sh', 'bash "./lib/helper.py"'],
+  ['scripts/run', '#!/bin/sh\nsource ./lib/helper.py'],
+  ['scripts/run.mjs', "import './lib/helper.py'"],
+  ['scripts/run.js', "const helper = require('./lib/helper.py')"],
+  ['scripts/run.ts', "import helper from './lib/helper.py'"],
+  ['scripts/run.mjs', "readFileSync(new URL('./lib/helper.py', import.meta.url))"],
+  ['scripts/run.mjs', "const here = dirname(fileURLToPath(import.meta.url)); readFileSync(join(here, 'lib', 'helper.py'))"],
+  ['scripts/lib/run.py', "Path(__file__).with_name('helper.py')"],
+  ['scripts/run.py', "Path(__file__).resolve().parent / 'lib' / 'helper.py'"],
+  ['scripts/nested/run.py', "Path(__file__).parents[1] / 'lib/helper.py'"],
+  ['scripts/run.py', "HERE = Path(__file__).resolve().parent\nhelper = HERE / 'lib/helper.py'"],
+  ['scripts/lib/run.py', 'from .helper import run'],
+])('closure rejects an omitted dependency in %s: %s', (file, source) => {
+  const target = 'scripts/lib/helper.py';
+  const files = new Map([[file, source], [target, 'pass']]);
+  expect(closureViolations(files, candidate => candidate === file)).toEqual([`${file} -> ${target}`]);
+  expect(closureViolations(files, () => true)).toEqual([]);
+});
+
+test('closure resolves extensionless imports, ignores absent external files, and scopes exceptions to one edge', () => {
+  const files = new Map([
+    ['scripts/run.ts', "import './helper'; import './absent'; import 'external'"],
+    ['scripts/helper.ts', 'export const value = 1'],
+    ['scripts/other.ts', "import './helper'"],
+  ]);
+  const selected = file => file !== 'scripts/helper.ts';
+  expect(closureViolations(files, selected)).toHaveLength(2);
+  expect(closureViolations(files, selected, { 'scripts/run.ts -> scripts/helper.ts': 'Checkout-only example' }))
+    .toEqual(['scripts/other.ts -> scripts/helper.ts']);
+  expect(scriptReferences('scripts/run.py', "# Path(__file__).with_name('ignored.py')")).toEqual([]);
+});
 
 const scratch = [];
 afterEach(() => scratch.splice(0).forEach(path => rmSync(path, { recursive: true, force: true })));
