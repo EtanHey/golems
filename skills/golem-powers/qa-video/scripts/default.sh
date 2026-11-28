@@ -3,7 +3,9 @@ set -euo pipefail
 
 # AIDEV-NOTE: `plan` and `gather` are the gather-first execute route (Etan 2026-11-12: gatherers read
 # the frames, one Opus judge child judges their text). No args keeps the prerequisite status check.
-SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve the entrypoint itself, including file and parent-directory symlinks.
+# Node is already required below; realpathSync also works with macOS bash 3.2.
+SCRIPTS="$(node -e 'process.stdout.write(require("path").dirname(require("fs").realpathSync(process.argv[1])))' "${BASH_SOURCE[0]}")"
 
 if [ "${1:-}" = finalize ]; then
   [ $# == 5 ] && [ "$4" = --transcript ] || { echo 'usage: default.sh finalize <workdir> <qa-report.md> --transcript <judge-session.jsonl>' >&2; exit 2; }
