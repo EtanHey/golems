@@ -495,7 +495,9 @@ def main(argv=None):
         parser.add_argument("--" + flag, type=float, default=os.environ.get("GOLEMS_HEAVY_" + env, default))
     for flag, default in (("timeout-seconds", "1800"), ("kill-grace-seconds", "10")):
         parser.add_argument("--" + flag, default=os.environ.get("GOLEMS_HEAVY_" + flag.upper().replace("-", "_"), default))
+    parser.add_argument("--lane-slots", action="store_true", help="use one lane mkdir slot instead of flock admission")
     parser.add_argument("--limit-gb", type=float)
+    parser.add_argument("--max-wait", dest="max_wait_seconds", type=float, default=argparse.SUPPRESS)
     parser.add_argument("--lane", default="heavy-suite")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
@@ -521,6 +523,9 @@ def main(argv=None):
             notice("SKIP delete-only push: no code to test")
             return 0
     if os.environ.get("GOLEMS_HEAVY_SUITE_HELD"):
+        if args.lane_slots:
+            notice("lane admission refuses nesting inside an existing heavy suite")
+            return 75
         return run()
     if os.environ.get("GOLEMS_HEAVY_FORCE") == "1":
         if args.limit_gb is not None:
@@ -539,6 +544,12 @@ def main(argv=None):
             notice(f"WARNING invalid {name}; running unqueued")
             return run()
     deadline, fd, legacy_fd = time.monotonic() + args.max_wait_seconds, None, None
+    if args.lane_slots:
+        import heavy_lane
+        if args.limit_gb is None:
+            notice("lane admission requires a memory watchdog")
+            return 75
+        return heavy_lane.run(args.lane, command, args.poll_seconds, deadline, run, notice)
     try:
         try:
             notice(f"QUEUED pid={os.getpid()}")

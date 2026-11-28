@@ -60,9 +60,20 @@ def measure(tree):
     return sum(size for _, size, _, _ in rows), rows
 
 
+def lane_host():
+    if sys.platform != 'darwin': return 'm1'  # conservative single-slot fallback
+    brand = subprocess.check_output(['/usr/sbin/sysctl', '-n', 'machdep.cpu.brand_string'], text=True, timeout=5)
+    if 'Apple M1' in brand: return 'm1'
+    if 'Apple M4' in brand: return 'm4'
+    raise ValueError('unknown Mac CPU; refusing to choose a lane namespace')
+
+
 def log_path(home=None):
-    host = 'm1' if os.uname().machine == 'arm64' and 'T6000' in os.uname().version else 'm4'
-    filename = f'.{host}-heavy.log' if sys.platform == 'darwin' else '.heavy-run.log'
+    try:
+        host = lane_host() if sys.platform == 'darwin' else None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        host = None  # Logging must preserve the alarm even on an unknown host.
+    filename = f'.{host}-heavy.log' if host else '.heavy-run.log'
     return (Path.home() if home is None else Path(home)) / filename
 
 

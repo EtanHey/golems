@@ -160,14 +160,49 @@ never cleanup decisions. The existing inner `members_seen_count` remains availab
 After updating the pinned hooks-live tree, run
 `python3 scripts/hooks/install-heavy-run.py` to install `~/.local/bin/heavy-run`.
 Use `heavy-run [--limit-gb 8] [--lane NAME] -- bun test` (or `bun run check`,
-or a proof command). It uses the existing heavy-suite slot admission exactly
-once. Watchdog slot timeout, lock errors and FORCE bypass fail closed. This
-slot namespace is distinct from the historical `.m1-heavy.lock` / `.m4-heavy.lock`
-mkdir convention; callers using that historical convention must migrate together.
-Until lanes migrate, heavy-run does NOT serialize against lanes using the
-`~/.m4-heavy.lock` or `~/.m1-heavy.lock` mkdir gate. Those lanes are not protected
-from each other. No second mkdir lock is acquired. Existing heavy-suite callers opt in with
-`--limit-gb 8`; legacy callers without that option retain their behavior.
+or a proof command). `heavy-run` selects lane mkdir admission (`--lane-slots`)
+in place of the heavy-suite flock slots. M1 uses `~/.m1-heavy.lock`; M4 tries
+`~/.m4-heavy.lock`, then `~/.m4-heavy-2.lock`. Host detection reads macOS
+`machdep.cpu.brand_string` (Apple M1 / Apple M4); unknown Macs refuse admission.
+Non-Darwin uses the conservative one-slot M1 layout in HOME.
+
+**Never run `heavy-run` while holding a lane mkdir lock yourself; `heavy-run` IS
+the lane lock now.** Wrapping it in your own lock takes both M4 slots or waits
+until `--max-wait` expires on M1 (1800 seconds by default).
+
+Before each acquisition sweep, M4 runs `~/.local/bin/m4-heavy-gate --quiet`
+when present. Nonzero results (including 1 WAIT and 2 unmeasurable), execution
+errors and gate timeout all wait/refuse; no lock is held during the gate.
+Missing gate is recorded in the heavy log and stderr; admission then relies on the slot alone. Lane admission
+uses neither the heavy-suite RAM floor nor its load gate. The 8 GiB runtime
+watchdog remains active. `--max-wait` (alias `--max-wait-seconds`, default 1800)
+bounds the whole admission, including the pressure gate; expiry returns 75 and
+never starts unqueued. WAIT notices repeat every 30 seconds.
+
+Immediately after mkdir, each acquired directory receives a private file named
+exactly `owner`. It has six `key=value` lines: `lane=`, `worker=`, `start=`
+(ISO 8601 UTC), `pid=`, `token=`, and `cmd=` (shell-quoted command).
+`GOLEMS_HEAVY_WORKER` supplies the worker identity, defaulting to `heavy-run:<pid>`.
+Backslashes and CR/LF inside values are escaped, keeping one field per line.
+A directory without `owner` stays foreign; no timestamp or PID permits reclaim. Took/released entries append to
+`~/.m1-heavy.log` or `~/.m4-heavy.log` in the existing `<lane> took HH:MM` /
+`<lane> released HH:MM` format. Release requires the original directory inode,
+owner-file inode, PID and token, and uses nonrecursive rmdir. Foreign, ownerless,
+replaced or nonempty directories are never reclaimed. Catchable INT/TERM/HUP,
+normal/nonzero exit and watchdog cleanup release the owned slot. SIGKILL or a
+host crash cannot clean a mkdir slot: inspect its ownership before manual repair.
+Like the lanes' mkdir protocol, this assumes cooperating same-user writers;
+concurrent malicious renaming between ownership verification and rmdir is not
+an atomic filesystem fencing guarantee.
+
+There is never a nested lane/flock acquisition. Heavy-run refuses inherited
+`GOLEMS_HEAVY_SUITE_HELD` ownership, and refuses FORCE. Ordinary heavy-suite
+children under heavy-run inherit the existing HELD marker and reuse admission.
+Direct heavy-suite callers (even with `--limit-gb`) retain flock admission.
+GC retains its exclusive heavy-suite lock and never takes a lane slot; heavy-run
+never takes heavy-suite.lock, so these paths cannot deadlock. Consequently this
+change does **not** exclude GC from lane workloads; GC still excludes the
+ordinary heavy-suite participants. Keep installer/GC coordination separate.
 
 The trampoline starts a new session. It handles TERM/INT/HUP until the wrapper
 finishes TERM, up to a five-second grace (ending early when only the leader
@@ -175,9 +210,8 @@ remains), and KILL to its process group, then reaps it.
 The unreaped direct child reserves its PID/group ID; processes outside its
 session cannot join. Watchdog cleanup never signals individual PIDs or other
 groups. An already-reaped leader is refused. Catchable wrapper signals use the
-same cleanup; SIGKILL of the wrapper cannot run cleanup (kernel releases its
-slot descriptors). Slot owner metadata remains in the persistent lock file;
-never delete those files.
+same cleanup. For direct heavy-suite flock callers, SIGKILL releases kernel
+descriptors; heavy-run mkdir slots instead remain for operator inspection.
 
 Memory is summed about every two seconds from observed descendants, retaining
 birth identities across reparenting. Darwin uses `proc_pid_rusage` with
