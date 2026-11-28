@@ -68,7 +68,7 @@ Terminal PR observations include `checks`: `green`, `failed`, `pending`, or
 MERGED is distinct from READY, even when checks are green. Null review decisions
 are emitted as an empty string. A second PR read confirms the head and state
 before READY, FAILED, or MERGED is emitted.
-SUCCESS, NEUTRAL, and SKIPPED are green; unknown or pending checks keep waiting.
+Required checks must complete with SUCCESS; NEUTRAL and SKIPPED count as green only for optional checks. Unknown, missing or pending required checks keep waiting.
 The command never merges, reruns checks, or writes to GitHub.
 
 `--poll-seconds` defaults to 30. `--max-gh-retries` defaults to 3: API errors

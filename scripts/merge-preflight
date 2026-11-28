@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Read-only exact-head required-check receipt; never merges or waits."""
+import argparse
+import runpy
+import sys
+import time
+from pathlib import Path
+from types import SimpleNamespace
+
+watch = runpy.run_path(str(Path(__file__).with_name('pr-watch')))
+
+
+def preflight(repo, pr, head):
+    deadline = time.monotonic() + 120
+    args = SimpleNamespace(repo=repo, pr=pr, head=head)
+    read = watch['gh_json']
+    fields = 'headRefOid,baseRefName,state,isDraft'
+    def read_pr():
+        return read(['pr', 'view', str(pr), '--json', fields], repo=repo,
+                    timeout=max(.001, deadline - time.monotonic()))
+    before = read_pr()
+    if before.get('headRefOid') != head or before.get('state') != 'OPEN' or before.get('isDraft') is not False:
+        print('NOT READY: expected open, ready PR at pinned head')
+        return 1
+    required = watch['read_required_checks'](args, before['baseRefName'], deadline)
+    checks = watch['read_checks'](args, deadline)
+    print(f'PR #{pr} head {head} base {before["baseRefName"]}')
+    ok = True
+    for context, app in required:
+        matching = [row for row in checks if row.get('_kind') != 'workflow'
+                    and row.get('context', row.get('name')) == context
+                    and (app is None or (row.get('app') or {}).get('id') == app)]
+        # Latest per check name at this exact head; IDs order even queued reruns.
+        latest = max(matching, key=lambda r: (int(r.get('id') or 0), r.get('created_at') or ''), default=None)
+        passed = latest is not None and (latest.get('status') == 'completed' and latest.get('conclusion') == 'success'
+                                        or latest.get('state') == 'success')
+        print(f'{"OK" if passed else "NOT-OK"} {context} app={app}: '
+              f'{latest.get("status", latest.get("state")) if latest else "MISSING"}/'
+              f'{latest.get("conclusion") if latest else "MISSING"}')
+        ok = ok and passed
+    # Also block queued ready-triggered workflows, including those without jobs yet.
+    snapshot = dict(statusCheckRollup=checks, requiredChecks=required)
+    ok = ok and watch['checks_verdict'](snapshot) == 'green'
+    after = read_pr()
+    if before != after:
+        print('NOT READY: PR head/base/state/draft changed during reads')
+        ok = False
+    print('MERGE-READY (CI only; routed review and authority still required)' if ok else 'NOT READY')
+    return 0 if ok else 1
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('repo')
+    parser.add_argument('pr', type=int)
+    parser.add_argument('--head', required=True)
+    args = parser.parse_args()
+    import re
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', args.repo) or args.pr <= 0 or not re.fullmatch(r'[0-9a-f]{40}', args.head):
+        parser.error('expected owner/repo, positive PR and full lowercase head SHA')
+    try:
+        return preflight(args.repo, args.pr, args.head)
+    except (watch['GhCommandError'], KeyError, TypeError, ValueError) as error:
+        print(f'NOT READY: {error}', file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main())

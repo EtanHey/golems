@@ -3,7 +3,7 @@
 Read this before an authorized merge and through remote verification, tracking, and cleanup, and at the
 [feature-batch gate](#feature-batch-gate) for heavy/e2e, runtime, visual QA, and release/install.
 
-For merge authority, the `--admin` default, and R-010, first read
+For merge authority, the normal merge and up-to-date-only `--admin` exception, and R-010, first read
 [Merge Authority](pr-creation.md#merge-authority).
 
 The merge paths, “mission is MERGED” example and alternative endings below apply only to merge-authorized endpoints; [full stop](full-stop.md) ends at verified unmerged PR handoff, retains its workspace and reports `ROOT-FF STOP: not merged`.
@@ -59,15 +59,19 @@ RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 
 Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
 
-After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
-with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos; `--admin` is the default. Never ask
-Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
-merge authority in their brief.
+After a clean other-vendor review at `headRefOid`, run
+`scripts/merge-preflight <owner/repo> <N> --head <headRefOid>` from golems.
+Required checks come from the base branch's ruleset `required_status_checks`; each latest run
+per name at the exact head must complete with SUCCESS. SKIPPED, NEUTRAL, queued, pending,
+cancelled or missing required checks block. Marking a draft ready starts suites: wait for those
+runs with the parent-owned watch, then rerun preflight. A draft's skipped checks never count.
 
-Self-approval is structurally blocked on EtanHey repos. A ruleset-only BLOCKED state or empty
-`reviewDecision` is not a reason to wait for Etan. The real blockers are failing/pending
-checks, conflicts and unresolved findings; do not bypass them. Omit `--delete-branch`;
-branch retirement follows the workspace lifecycle contract and any stacked-PR holds.
+Default merge: `gh pr merge <N> --merge --match-head-commit <headRefOid you saw green>`.
+`--admin` is allowed only to skip the up-to-date rule, with every required check reported and
+green at that exact head and those checks listed with SUCCESS on the merge line. It cannot
+bypass review protections or other blockers. Never ask Etan to approve or merge a PR; only
+true one-way doors wait for him. Workers follow their brief's merge authority.
+Omit `--delete-branch`; retirement follows the workspace lifecycle contract.
 
 ### BLOCKED with every check green
 
@@ -81,7 +85,7 @@ also shows as `BLOCKED`. List the non-passing rollup entries:
 
 ```bash
 gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[]
-  | select((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL") | not)
+  | select((.conclusion // .state) | IN("SUCCESS") | not)
   | [(.name // .context), (.conclusion // .state // .status), (.detailsUrl // .targetUrl)] | @tsv'
 ```
 
@@ -91,8 +95,7 @@ gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[]
 2. Take the run id from each kept URL (`.../actions/runs/<run id>/job/...`), de-duplicate the ids
    (two stale jobs often share one run), and run `gh run rerun <run id> --failed` once per id.
 3. When those re-runs pass, re-check the required checks, findings and review at the unchanged
-   `headRefOid`, then merge under the rule above. The ruleset-only self-review `BLOCKED` still is
-   not a reason to wait.
+   `headRefOid`, then merge under the rule above. A remaining protection block needs diagnosis; only the up-to-date rule qualifies for the admin exception.
 
 ### Worktree-Locked Local Merge
 

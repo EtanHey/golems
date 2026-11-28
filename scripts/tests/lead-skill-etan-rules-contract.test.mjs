@@ -157,7 +157,7 @@ test("PR merge law forbids asking Etan to approve or merge", () => {
   }
   const merge = flat(section(docs["pr-loop/references/merge-and-verification.md"], "## Single-Account Review Verdicts"));
   expect(merge).toContain("[Merge Authority](pr-creation.md#merge-authority)");
-  expect(merge).toContain("`gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>`");
+  expect(merge).toContain("`gh pr merge <N> --merge --match-head-commit <headRefOid you saw green>`");
   expect(merge).toContain("BLOCKED");
 });
 
@@ -247,14 +247,14 @@ function blockedGreen(read) {
   const step = flat(section(read(MERGE_REF), "### BLOCKED with every check green"));
   const errors = [];
   if (!step) return ["BLOCKED-with-green step missing"];
-  if (!/ruleset-only self-review `BLOCKED` still is not a reason to wait/.test(step)) errors.push("step drops the ruleset-only BLOCKED exception");
+  if (!/only the up-to-date rule qualifies for the admin exception/.test(step)) errors.push("step drops the up-to-date-only admin exception");
   if (/merge only once the PR leaves `?BLOCKED/i.test(step)) errors.push("step waits for BLOCKED to clear");
   if (!step.includes("de-duplicate the ids")) errors.push("step re-runs once per check, not once per run");
   if (!step.includes("newest run failed is a real failure")) errors.push("step drops the real-failure stop");
   return errors;
 }
 test("proof copies point at Pick the proof and keep the ratchet-table rule", () => expect(proofPointers(readRepo)).toEqual([]));
-test("BLOCKED-with-green step keeps the ruleset-only exception", () => expect(blockedGreen(readRepo)).toEqual([]));
+test("BLOCKED-with-green step limits the admin exception", () => expect(blockedGreen(readRepo)).toEqual([]));
 const withEdit = (rel, from, to) => (r) => {
   const text = readRepo(r);
   if (r !== rel) return text;
@@ -265,7 +265,7 @@ const POINTER_MUTANTS = [
   [proofPointers, "the old free-choice regression summary", withEdit("CONTRIBUTING.md", "a real-CLI ratchet row in repos with a ratchet table, otherwise a fail-first test on real code", "ratchet row or fail-first test")],
   [proofPointers, "the pointer removed", withEdit("skills/golem-powers/large-plan/SKILL.md", "[Pick the proof](../pr-loop/SKILL.md#pick-the-proof)", "the rules")],
   [blockedGreen, "merge waits for BLOCKED to clear", withEdit(MERGE_REF, "then merge under the rule above.", "then merge only once the PR leaves BLOCKED.")],
-  [blockedGreen, "the ruleset-only exception removed", withEdit(MERGE_REF, "The ruleset-only self-review `BLOCKED` still is\n   not a reason to wait.", "")],
+  [blockedGreen, "the admin limit removed", withEdit(MERGE_REF, "A remaining protection block needs diagnosis; only the up-to-date rule qualifies for the admin exception.", "")],
   [blockedGreen, "one re-run per check", withEdit(MERGE_REF, "de-duplicate the ids", "keep every id")],
 ];
 for (const [check, label, read] of POINTER_MUTANTS) {
