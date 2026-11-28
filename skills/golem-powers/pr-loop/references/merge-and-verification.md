@@ -3,7 +3,7 @@
 Read this before an authorized merge and through remote verification, tracking, and cleanup, and at the
 [feature-batch gate](#feature-batch-gate) for heavy/e2e, runtime, visual QA, and release/install.
 
-For merge authority, the `--admin` default, and R-010, first read
+For merge authority, the normal merge and up-to-date-only `--admin` exception, and R-010, first read
 [Merge Authority](pr-creation.md#merge-authority).
 
 The merge paths, “mission is MERGED” example and alternative endings below apply only to merge-authorized endpoints; [full stop](full-stop.md) ends at verified unmerged PR handoff, retains its workspace and reports `ROOT-FF STOP: not merged`.
@@ -59,15 +59,19 @@ RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 
 Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
 
-After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
-with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos; `--admin` is the default. Never ask
-Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
-merge authority in their brief.
+After a clean other-vendor review at `headRefOid`, run
+`~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <headRefOid>`.
+Required checks come from the base branch's ruleset `required_status_checks`; each latest run
+per name at the exact head must complete with SUCCESS. SKIPPED, NEUTRAL, queued, pending,
+cancelled or missing required checks block. Marking a draft ready starts suites: wait for those
+runs with the parent-owned watch, then rerun preflight. A draft's skipped checks never count.
 
-Self-approval is structurally blocked on EtanHey repos. A ruleset-only BLOCKED state or empty
-`reviewDecision` is not a reason to wait for Etan. The real blockers are failing/pending
-checks, conflicts and unresolved findings; do not bypass them. Omit `--delete-branch`;
-branch retirement follows the workspace lifecycle contract and any stacked-PR holds.
+Default merge: `gh pr merge <N> --merge --match-head-commit <headRefOid you saw green>`.
+`--admin` is allowed only to skip the up-to-date rule, with every required check reported and
+green at that exact head, with the preflight OK lines and `ADMIN-ELIGIBLE: BEHIND only` recorded in the DONE report. It cannot
+bypass review protections or other blockers. Never ask Etan to approve or merge a PR; only
+true one-way doors wait for him. Workers follow their brief's merge authority.
+Omit `--delete-branch`; retirement follows the workspace lifecycle contract.
 
 ### BLOCKED with every check green
 
@@ -81,7 +85,7 @@ also shows as `BLOCKED`. List the non-passing rollup entries:
 
 ```bash
 gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[]
-  | select((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL") | not)
+  | select((.conclusion // .state) | IN("SUCCESS") | not)
   | [(.name // .context), (.conclusion // .state // .status), (.detailsUrl // .targetUrl)] | @tsv'
 ```
 
@@ -91,14 +95,14 @@ gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[]
 2. Take the run id from each kept URL (`.../actions/runs/<run id>/job/...`), de-duplicate the ids
    (two stale jobs often share one run), and run `gh run rerun <run id> --failed` once per id.
 3. When those re-runs pass, re-check the required checks, findings and review at the unchanged
-   `headRefOid`, then merge under the rule above. The ruleset-only self-review `BLOCKED` still is
-   not a reason to wait.
+   `headRefOid`, then merge under the rule above. A remaining protection block needs diagnosis; only the up-to-date rule qualifies for the admin exception.
 
 ### Worktree-Locked Local Merge
 
-In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` can fail
+First run `~/.golems/current/scripts/merge-preflight <owner/repo> <N> --head <green head>`.
+In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head>` can fail
 **locally** even though the PR is fully mergeable: the post-merge branch cleanup
-checks out the default branch, and git refuses when another worktree holds it
+may check out the default branch, and git refuses when another worktree holds it
 (`failed to run git: fatal: 'main' is already used by worktree at
 '$HOME/Gits/brainlayer-prod'`).
 
@@ -107,8 +111,8 @@ checks out the default branch, and git refuses when another worktree holds it
    `gh pr view <N> --json state,mergedAt,mergeCommit`. If `state` is `MERGED`,
    do NOT re-merge; finish cleanup only.
 2. **Remote fallback.** Merge server-side without touching local checkouts:
-   `gh api graphql` with the `mergePullRequest` mutation, or
-   `gh api -X PUT repos/{owner}/{repo}/pulls/<N>/merge -f merge_method=merge`.
+   `gh api graphql` with the `mergePullRequest` mutation and `expectedHeadOid: <green head>`, or
+   `gh api -X PUT repos/{owner}/{repo}/pulls/<N>/merge -f merge_method=merge -f sha=<green head>`. Re-run the installed pinned-head preflight immediately before any API fallback too.
 3. **Delete the remote branch explicitly.** After a remote/API merge the branch
    can survive auto-cleanup — check `gh api repos/{owner}/{repo}/branches/<branch>`
    and `git push origin --delete <branch>` if it is still there.
@@ -254,7 +258,7 @@ one-at-a-time lock.
 > [!CAUTION]
 > HARD STOP AT THE FEATURE-BATCH GATE: IF ANY PR IN THE BATCH TOUCHES DAEMON, SOCKET, MCP, OR PROTOCOL CODE, COMPLETE REAL CLIENT RUNTIME VERIFICATION ON THE BATCH HEAD BEFORE THE BATCH IS RELEASED, INSTALLED, OR DECLARED DONE. MARKDOWN INTENT IS NOT ENOUGH.
 
-**When:** at the [feature-batch gate](#feature-batch-gate), not before every merge. A mid-batch daemon PR
+**When:** at the [feature-batch gate](#feature-batch-gate), not before every merge, except VoiceLayer daemon PRs (below). A mid-batch daemon PR
 merges on the size cadence and its real-client run is queued for the batch. A single-PR batch runs it
 before that PR ships.
 
@@ -262,16 +266,11 @@ before that PR ships.
 
 **socat/curl/unit tests are NOT sufficient.** Real client test required.
 
-**Live hook (VoiceLayer).** `hooks/daemon-gate-precheck.py` is still installed as a PreToolUse hook. It
-blocks `gh pr merge --admin` in VoiceLayer on a daemon diff that has no matching `.verified/` artifact.
-Until that hook is rescoped to the batch gate, a VoiceLayer daemon PR runs the steps below before its
-admin merge. Never bypass the hook: no merge without `--admin`, no API merge, and no disabling it to
-dodge the block. Tell your lead the hook and the batch rule conflict.
+**Live hook (VoiceLayer).** Run `./scripts/voicelayer-verify.sh` before any merge of a VoiceLayer daemon PR. `hooks/daemon-gate-precheck.py` only sees `--admin` merges, so do not rely on it: the normal non-admin merge still owes verification. Never bypass a hook refusal or disable the hook. A daemon PR without its matching `.verified/` artifact cannot merge through CLI or API. Hook widening to every merge is tracked in [golems #1391](https://github.com/EtanHey/golems/issues/1391); until then the pre-merge verification is explicit.
 
 For VoiceLayer:
 
-1. Run `./scripts/voicelayer-verify.sh` on the batch head before release/install (and before
-   `gh pr merge --admin` while the live hook above enforces it).
+1. Run `./scripts/voicelayer-verify.sh` on the exact PR head before any merge of a daemon PR, and on the batch head before release/install.
 2. If the script says runtime verification is required, rebuild/relaunch VoiceBar when prompted.
 3. Press F5 in the real VoiceBar client, speak `verification test`, release, and confirm paste fired.
 4. Confirm `.verified/verified-runtime-<branch>-<short-sha>.txt` exists and contains `Verified-Runtime: <sha>`.

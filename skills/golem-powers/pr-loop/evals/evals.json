@@ -93,7 +93,7 @@
       "assertions": [
         {
           "name": "refuses-merge-with-zero-reviews",
-          "description": "Response does not merge when reviewDecision is empty and no routed review verdict exists at headRefOid; required review counts come from /agent-routing \u00a7 Routing rules (SSOT), not a comment-count threshold"
+          "description": "Response does not merge when reviewDecision is empty and no routed review verdict exists at headRefOid; required review counts come from /agent-routing § Routing rules (SSOT), not a comment-count threshold"
         },
         {
           "name": "distinguishes-clean-from-approved",
@@ -179,7 +179,9 @@
       "prompt": "I fixed the BrainBar MCP framing bug. All 37 Swift tests pass and socat returns a valid response. State snapshot in fixtures/daemon-pr-unit-tests-only.txt. Let's create the PR and merge.",
       "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Opens the PR on fast checks, but the real Claude Code session through the daemon (MCP tools available AND returning real results) is mandatory at the feature-batch gate, before the fix is released, installed or declared done. A fix that alone ships to users is a single-PR batch and runs that gate itself, before release/install and before the merge when merging deploys it. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
       "root_cause_tested": "daemon-fix-without-real-client-test — from mining synthesis finding #1: BrainBar had 3 PRs before the actual cause was found because nobody tested with a real Claude session",
-      "files": ["fixtures/daemon-pr-unit-tests-only.txt"],
+      "files": [
+        "fixtures/daemon-pr-unit-tests-only.txt"
+      ],
       "assertions": [
         {
           "name": "identifies-daemon-socket-mcp-change",
@@ -219,7 +221,9 @@
       "prompt": "Dashboard componentization is done — split the big component into 3 smaller ones with full test coverage. State snapshot in fixtures/normal-feature-pr.txt. Let's get this merged.",
       "expected_output": "Agent follows the standard PR loop (verify, commit, push, PR, review, merge, cleanup) WITHOUT triggering the daemon verification gate. This is a React component refactor — no daemon/socket/MCP changes. The daemon gate should ONLY fire for daemon/socket/MCP PRs.",
       "root_cause_tested": "daemon-gate-false-positive — ensures the daemon verification gate does NOT trigger on normal code changes, which would slow down every PR unnecessarily",
-      "files": ["fixtures/normal-feature-pr.txt"],
+      "files": [
+        "fixtures/normal-feature-pr.txt"
+      ],
       "assertions": [
         {
           "name": "follows-standard-pr-loop",
@@ -254,7 +258,9 @@
       "prompt": "The final merge plan is in fixtures/squash-merge-draft-plan.txt. Check it against current repo law and correct any violation before the lead merges.",
       "expected_output": "Agent catches the stale squash-merge prescription, corrects the command to `gh pr merge 612 --merge --match-head-commit <green head> --delete-branch`, and cites the R-010 interim law: merge commits remain the default until the BrainLayer commit-traceability gate ships with BrainLayer-present detection verified. Agent says to check the canonical registry R-010 row's current state before assuming squash has become active.",
       "root_cause_tested": "r010-repair-path-doc-drift — a pre-existing draft plan already contains the obsolete squash prescription and must be repaired rather than repeated",
-      "files": ["fixtures/squash-merge-draft-plan.txt"],
+      "files": [
+        "fixtures/squash-merge-draft-plan.txt"
+      ],
       "assertions": [
         {
           "name": "detects-stale-squash-prescription",
@@ -734,18 +740,18 @@
       "id": 51,
       "name": "daemon-pr-mid-batch-queues-real-client-run",
       "prompt": "Mid-way through a feature batch, your size:M PR changes VoiceBar daemon socket code. Fast CI is green at headRefOid and the routed reviewer is clean after round 2. Two more PRs in the batch are still to come. What do you do about the real-client verification?",
-      "expected_output": "Merge on fast CI + review (M allows up to 2 rounds) and queue the real-client daemon run for the feature-batch gate, before the batch is released, installed or declared done. If the live VoiceLayer daemon-gate-precheck hook blocks the admin merge, run the verify steps rather than bypassing it, and tell the lead the hook conflicts with the batch rule.",
+      "expected_output": "For a VoiceLayer daemon PR, run voicelayer-verify.sh on the exact head before any merge and require its matching runtime artifact. The hook only sees admin merges; do not rely on it and never bypass a refusal. Use the normal non-admin merge after pinned-head preflight and review. Other daemon real-client verification remains a batch gate.",
       "files": [],
       "assertions": [
         {
           "type": "outcome",
-          "name": "queues-runtime-for-batch-gate",
-          "description": "Merges on the size cadence and records the daemon real-client run as queued for the feature-batch gate."
+          "name": "requires-voicelayer-artifact-before-merge",
+          "description": "Requires voicelayer-verify.sh and the matching exact-head artifact before any VoiceLayer daemon merge; other daemon runtime work remains at the batch gate."
         },
         {
           "type": "negative",
-          "name": "no-per-pr-park",
-          "description": "Does NOT park the PR waiting on a per-PR real-client run, and does NOT bypass a live repo hook (no non-admin or API merge to dodge daemon-gate-precheck)."
+          "name": "no-admin-only-hook-reliance",
+          "description": "Does not rely on the admin-only hook for normal merges; never bypasses or disables a refusing hook, and never merges a VoiceLayer daemon PR without its runtime artifact."
         }
       ]
     },

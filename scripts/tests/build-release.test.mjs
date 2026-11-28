@@ -7,6 +7,20 @@ import { join } from 'node:path';
 import { buildRelease, createManifest, shipped } from '../release/build-release.mjs';
 import { closureViolations, scriptReferences } from './release-closure.mjs';
 
+test('installed commands named by skills are shipped', () => {
+  const repo = new URL('../../', import.meta.url);
+  const docs = execFileSync('git', ['ls-files', 'skills/golem-powers/**/*.md'],
+    { cwd: repo, encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+  const missing = [];
+  for (const doc of docs) {
+    const text = readFileSync(new URL(doc, repo), 'utf8');
+    for (const match of text.matchAll(/~\/\.golems\/current\/([A-Za-z0-9_./-]+)/g)) {
+      if (!shipped(match[1])) missing.push(`${doc} -> ${match[1]}`);
+    }
+  }
+  expect(missing).toEqual([]);
+});
+
 test('every shipped script includes its repository dependencies in the release', () => {
   const repo = new URL('../../', import.meta.url);
   // Re-run the identical scanner against committed baseline objects and policy.

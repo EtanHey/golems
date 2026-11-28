@@ -348,13 +348,13 @@ print(json.dumps(step))
 
     def test_latest_checks_keep_workflows_and_pending_reruns_separate(self):
         classify = runpy.run_path(str(SCRIPT))['checks_verdict']
-        old = dict(id=1, name='test', workflowName='A', status='completed', conclusion='failure',
+        old = dict(id=1, name='test', workflowName='A', workflow_id=501, status='completed', conclusion='failure',
                    completed_at='2026-10-11T18:00:00Z')
-        new = dict(id=2, name='test', workflowName='A', status='queued')
+        new = dict(id=2, name='test', workflowName='A', workflow_id=501, status='queued')
         self.assertEqual(classify(snapshot([old, new])), 'pending')
         new.update(status='completed', conclusion='success')
         self.assertEqual(classify(snapshot([new, old])), 'green')
-        other = dict(old, workflowName='B')
+        other = dict(old, workflowName='B', workflow_id=502)
         self.assertEqual(classify(snapshot([new, other])), 'failed')
         self.assertEqual(classify(snapshot([dict(new, conclusion='cancelled')])), 'failed')
 

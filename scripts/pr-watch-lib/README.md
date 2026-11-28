@@ -51,7 +51,7 @@ Completion alone does not register a new check. Restarting the watcher starts
 a fresh quiet window. This bounds
 readiness to observed registrations; a check can still register after READY.
 Checks, workflow runs, workflow jobs, and legacy commit statuses are paginated
-with 100 rows per page. Only the latest check per app ID plus name plus workflow, and latest
+with 100 rows per page. Only the latest check per app ID plus name plus stable workflow ID (not display name), and latest
 legacy status per context, counts. Numeric IDs order queued reruns before they
 have start timestamps; timestamps break ties or order rows without IDs.
 Jobs are read for the latest run of each workflow; older check runs still undergo
@@ -68,7 +68,7 @@ Terminal PR observations include `checks`: `green`, `failed`, `pending`, or
 MERGED is distinct from READY, even when checks are green. Null review decisions
 are emitted as an empty string. A second PR read confirms the head and state
 before READY, FAILED, or MERGED is emitted.
-SUCCESS, NEUTRAL, and SKIPPED are green; unknown or pending checks keep waiting.
+Required checks must complete with SUCCESS; NEUTRAL and SKIPPED count as green only for optional checks. Unknown, missing or pending required checks keep waiting.
 The command never merges, reruns checks, or writes to GitHub.
 
 `--poll-seconds` defaults to 30. `--max-gh-retries` defaults to 3: API errors

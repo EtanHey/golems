@@ -19,6 +19,7 @@
     "scripts/release/install.sh",
     "release-gate.json",
     "scripts/pr-watch",
+    "scripts/merge-preflight",
     ".claude/hooks/block-dangerous-commands.py",
     "hooks/daemon-gate-precheck.py",
     "scripts/model-roles.mjs",
