@@ -11,7 +11,7 @@ description: "repoGolem launchers: {repo}Claude/Codex, flags -s/-c/-w/--worker, 
 > The launcher handles EVERYTHING: cd to repo, MCP wiring, secrets, iTerm profile, badge.
 > You NEVER need `source ~/.zshrc && cd $HOME/Gits/X && claude -s`. Just: `brainlayerClaude -s`.
 
-Cursor launchers are retired; use T3 `delegate_task` (`providerInstanceId: "cursor"`, `model: "default"`) for Cursor work; see `/agent-routing` for details.
+No Cursor in the fleet. Cursor is retired; use supported Codex or Claude roles through `/agent-routing`.
 
 ---
 
@@ -363,7 +363,7 @@ values from Codex session metadata rather than the agent's self-description.
 
 | Skill | How repoGolem Integrates |
 |-------|-------------------------|
-| `/agent-routing` | Routing owns provider selection and Cursor delegation; repoGolem defines the active CLI launchers. |
+| `/agent-routing` | Routing owns provider selection and provider eligibility; repoGolem defines the active CLI launchers. |
 | `/cmux-agents` | `spawn_agent` is the default visible-worker path; repoGolem still defines the launcher names underneath (R10) |
 | `/orc` | R10 iron rule: "Use repoGolem launcher functions. ALWAYS. NEVER raw CLI." |
 | `/session-handoff` | Agent resume table includes launcher commands for crash recovery |

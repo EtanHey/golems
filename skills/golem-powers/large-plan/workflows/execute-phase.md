@@ -60,11 +60,11 @@ bun test   # or npm test
 
 Run a CLI agent to audit your changes **before** pushing. This catches issues locally and saves PR review round-trips.
 
-The lead dispatches a read-only T3 Cursor child using `/cursor-workflows`. Write a pointer brief pinning the diff base/head, audit criteria and collab report path; one child per brief. Workers never launch their own reviewer.
+No Cursor in the fleet. Use supported roles via `/agent-routing`; workers never start their own reviewer.
 
 Review the output. Fix any HIGH/MEDIUM issues. Re-run tests after fixes.
 
-**Why:** Bot reviewers (CodeRabbit, Cursor Bugbot) take 10-20 minutes. Local audit catches the same issues in one pass, reducing fix-push-wait cycles.
+**Why:** Bot reviewers are asynchronous and advisory. Local audit catches the same issues in one pass, reducing fix-push-wait cycles.
 
 ### 6. Commit and Push
 

@@ -90,7 +90,7 @@ Keep **codexJudge** because:
 ```bash
 python scripts/kappa-matrix.py \
   --from-phase1 <output>/phase-1-judgments/ \
-  --judges claude,codex,gemini,cursor \
+  --judges claude,codex,gemini \
   --out <output>/phase-2-crossref/kappa-matrix.md \
   --bootstrap-iters 1000 \
   --weights linear

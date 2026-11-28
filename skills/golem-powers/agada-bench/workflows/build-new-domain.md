@@ -133,16 +133,16 @@ python scripts/build-gold.py \
 # 4-way run with gemini as shadow (Runs 2-4 historical)
 python scripts/build-gold.py \
   --run-dir <output>/ \
-  --judges claude,codex,cursor,gemini \
+  --judges claude,codex,gemini \
   --schema v1.1-3p-1s \
-  --primary-judges claude,codex,cursor \
+  --primary-judges claude,codex \
   --shadow-judge gemini \
   --tiebreaker claude
 
 # Run 1 reproduction (legacy v1 schema: 4-judge equal-weight)
 python scripts/build-gold.py \
   --run-dir <output>/ \
-  --judges claude,codex,cursor,gemini \
+  --judges claude,codex,gemini \
   --schema v1 \
   --tiebreaker claude
 ```

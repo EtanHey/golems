@@ -241,7 +241,7 @@ Pre-fetch the full orc tool superset at boot so mid-session `ToolSearch` is near
 ToolSearch("select:mcp__cmuxlayer__spawn_agent,send_to,wait_for,read_screen,list_agents,list_surfaces,close_surface,update_surface,control_health,mcp__brainlayer__brain_search,brain_store,brain_recall,brain_entity,brain_digest,mcp__google-drive__search,listFolder,createFolder,createTextFile,uploadFile,moveItem,readGoogleDoc,renameItem,mcp__exa__web_search_exa,crawling_exa,TaskCreate,TaskUpdate,TaskList,TaskGet")
 ```
 **S14. SPAWN ENV ISOLATION** *(from R48)*
-Branch spawn commands by target CLI; never copy Claude Code env into Codex, Cursor, or Gemini. Evidence (paraphrased): "Do you understand how broken your logic has to be to think that when you start a Codex, you could send Claude Code's MCP-connection/no-flicker env into it?" Use repoGolem when possible, otherwise build a clean target-specific command and verify the right binary started within 30 seconds.
+Branch spawn commands by target CLI; never copy Claude Code env into Codex or Gemini. Evidence (paraphrased): "Do you understand how broken your logic has to be to think that when you start a Codex, you could send Claude Code's MCP-connection/no-flicker env into it?" Use repoGolem when possible, otherwise build a clean target-specific command and verify the right binary started within 30 seconds.
 **S15. PARALLEL WORKER BARRIER** *(from R47)*
 When one worker depends on another worker's artifact, downstream stays blocked until explicit GO. Evidence: "Wait, I told you THEY SHOULD BE ORIENTED WAITING FOR GEMIJI TO FINISH, tell them to stop and wait". Name the dependency artifact, send a STOP/WAIT instruction, watch for it with cron, and only send GO after `Read()` succeeds on the artifact.
 **S16. RESEARCH-PLAN VERDICTS = COLLABORATORS' JOINT CALL** *(gen-10 weave #33, 2026-06-05)*
@@ -298,7 +298,7 @@ Monitor/close lifecycle is owned by fleet canon #7.
 **REF10. ITERATIVE DIG-DEEPER >= 2 ROUNDS** *(from R34)*
 If the user asks for drilling or iteration, one answer is not enough; only lock after round 2 or an explicit "good enough."
 **REF11. POST-IMPL AUDIT GATE** *(from R44)*
-For PRs with >500 added lines, run a read-only Cursor audit before merge to catch dead code, wiring, aggregation, and cross-module logic bugs.
+For large PRs, route the other-vendor review under `/agent-routing` to catch dead code, wiring, aggregation and cross-module logic bugs. No Cursor audits.
 **REF12. RESEARCH AMPLIFICATION GATE** *(from R45)*
 Use Gemini Deep Research only when the brief has real ambiguity, external-repo uncertainty, or explicitly low-confidence sections; skip it when the brief is already research-complete.
 **REF13. QA ARTIFACT DISAMBIGUATION** *(from R46)*
@@ -390,17 +390,17 @@ list_agents({agent_ids:[agent_id], detail:"full"})
 
 Routing ownership and utilization thresholds live in `/agent-routing` `references/verification-and-incidents.md` §§ Mid-Sprint Gate and Post-Sprint Gate.
 ```
-For each Claude agent with assigned Cursor/Codex workers:
+For each Claude agent with assigned gatherers/Codex workers:
 1. Check Claude's context % (R13 calculation)
 2. Check worker agent ids: list_agents(detail:"full") -> token count / status > 0?
    -> Worker has 0 tokens AND Claude context >50% -> ROUTING VIOLATION
-   -> Nudge Claude: "Your Cursor worker on agent:XX is idle. Delegate remaining queries."
+   -> Nudge Claude: "Your gatherer on agent:XX is idle. Delegate remaining queries."
 3. Check worker alive: list_agents({mine:true})
    -> Worker missing -> respawn worker immediately via spawn_agent
    -> Resend original task. Notify the Claude agent of the new agent_id.
 4. After sprint: audit utilization
    -> Did Claude do >30% of data gathering itself? -> Flag for process improvement
-   -> Did Cursor do code changes? -> Flag (Cursor is read-only)
+   -> Did a gather-only role change code? -> Flag the role violation
 ```
 
 ### User going AFK
@@ -470,7 +470,7 @@ For each Claude agent with assigned Cursor/Codex workers:
 
 ### Name-Claim Protocol
 
-Canon #7 owns claim-name law. Orc mechanic: post a grep-stable claim before dispatch and include worker claim names in their briefs because Codex/Cursor workers may not load Claude skills.
+Canon #7 owns claim-name law. Orc mechanic: post a grep-stable claim before dispatch and include worker claim names in their briefs because Codex workers may not load Claude skills.
 
 Roster query: `grep '^> CLAIM' <channel-file>`.
 
@@ -514,7 +514,7 @@ Categories: agent count, monitoring cadence, merge authority, spawn tool prefere
 | Upload prompts as NotebookLM sources | Query text was treated as context, not as a question. | Sources are context; prompts are questions (`REF12`) |
 | Act on "latest QA" without naming the artifact | "latest QA" meant a different artifact than the agent assumed. | Restate the artifact class and confirm before acting (`REF13`) |
 | Start downstream workers before upstream output exists | The human had to say "STOP ALL WORK... Wait until I send you GO". | Set an explicit blocked state and release only after `Read()` on the dependency artifact (`S15`) |
-| Prepend Claude env vars to Codex/Cursor/Gemini | Spawned the wrong runtime with broken env bleed. | Use repoGolem or a clean CLI-specific command (`S14`, `S7`) |
+| Prepend Claude env vars to Codex/Gemini | Spawned the wrong runtime with broken env bleed. | Use repoGolem or a clean CLI-specific command (`S14`, `S7`) |
 
 ---
 

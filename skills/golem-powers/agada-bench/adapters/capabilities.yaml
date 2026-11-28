@@ -51,18 +51,7 @@ adapters:
     reliability_concern: "FM13 risk — liveness gate mandatory"
 
   cursor:
-    launcher: "T3 delegate_task (providerInstanceId: cursor)"
-    mcp_required: false
-    model: default  # T3 Auto sentinel
-    typical_runtime_min: 10
-    judge_timeout_min: 30
-    in_default_panel: false           # dropped per W3.2 κ matrix
-    independence_rank: 4              # most redundant
-    tiebreaker_role: false
-    historical_fm12_rate: 0.0
-    historical_fm13_rate: 0.0
-    mean_confidence_v11: 81           # best raw calibration
-    redundancy_pair: "claude"         # κ(claude, cursor) = 0.811 is highest pair
+    retired: true # No Cursor in the fleet.
 
 # Panel composition
 panels:
@@ -74,7 +63,7 @@ panels:
     row_tolerance: 0.05
 
   v1_1_reproduction:
-    judges: [claude, codex, gemini, cursor]
+    judges: [claude, codex]
     tiebreaker: claude
     pending_rt_cascade: etan-adjudicate   # historical Runs 1–4 used manual adjudication
     liveness_check: warn-only             # historical runs predate liveness gate

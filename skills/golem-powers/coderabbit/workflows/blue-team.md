@@ -43,7 +43,7 @@ Use the repo context map below. Match the current repo name (from `basename $(gi
 
 ### 4. Build and Run the Prompt
 
-T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+No Cursor in the fleet. Cursor is retired; use supported Codex or Claude roles through `/agent-routing`.
 
 Put the relevant prompt template, diff/base/head, report path and read-only constraints in the brief. The lead routes review; workers do not start their own reviewers.
 
@@ -61,7 +61,7 @@ The prompt produces category-grouped findings. Triage:
 
 Save structured output:
 
-T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+No Cursor in the fleet. Cursor is retired; use supported Codex or Claude roles through `/agent-routing`.
 
 Put the relevant prompt template, diff/base/head, report path and read-only constraints in the brief. The lead routes review; workers do not start their own reviewers.
 
@@ -85,7 +85,7 @@ Put the relevant prompt template, diff/base/head, report path and read-only cons
 
 For comprehensive coverage, run both reviews:
 
-T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+No Cursor in the fleet. Cursor is retired; use supported Codex or Claude roles through `/agent-routing`.
 
 Put the relevant prompt template, diff/base/head, report path and read-only constraints in the brief. The lead routes review; workers do not start their own reviewers.
 

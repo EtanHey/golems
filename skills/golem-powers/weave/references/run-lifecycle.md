@@ -389,9 +389,7 @@ Gather runs **entirely off-Claude**; Claude does judgment only. The ladder is
 **exhaustible and ordered** — probe quota before you launch, because an AUTO cap
 is a calendar fact, not an incident:
 
-1. **cursor-AUTO** (Cursor Pro included tier) — itself exhaustible: explicit
-   `--model auto` returned the usage-limit error at ~sess 348/805, operator-verified
-   ("we exhausted cursor auto tier"). [g3:54-64 → skills-audit-notes.md:191; tree-wf-review-priorart.md:42-43]
+1. Start with the eligible gather route in `/agent-routing`; Cursor is retired. The historical Cursor AUTO exhaustion receipt is evidence only, never a launch recommendation.
 2. Choose the next eligible gather route via `/agent-routing` § Routing rules (SSOT); retain the small-slice boundary. [g3:60]
 3. Keep centerpiece mining deepest (`references/topology.md`); use the routing pointer above. [g3:60]
 
@@ -444,7 +442,7 @@ Briefs that point workers at skill files MUST use the real path: skills live at
 **one line** ("Read and follow `<file>`") — the payload lives in the brief/collab
 file on disk with report path + DONE marker + green criteria. Boot prompts >1
 paragraph get CHUNKED on idle panes and wedge them. The discharge harness stays
-**engine-agnostic** (briefs on disk + one-line pointers) so Codex↔Cursor swap in
+**engine-agnostic** (briefs on disk + one-line pointers) so Codex workers swap in
 minutes. [g1:99-100 → 2026-06-06-evening.md:47-48,53-55; g2:22,31]
 
 ### 2e. Review the harness script BEFORE you launch it (NEW pre-launch gate)
@@ -528,7 +526,7 @@ Every weave checks whether context files need surgical improvement and routes it
   sessions by **prompt identity / session stem**, not repo path alone.
 - **Gemini-side artifacts** (Etan-fired in UI) are a future corpus modality — note
   in manifest when excluded from JSONL discovery.
-- **Artifact-cluster mining is first-class:** Cursor clusters with no JSONLs are a
+- **Artifact-cluster mining is first-class:** Cursor clusters (historical) with no JSONLs are a
   real corpus modality (4 clusters → 53 findings in one run), not a skip. [g1:81 → 2026-06-07.md:25]
 
 ## 3. The miner contract (per session)
@@ -609,8 +607,7 @@ or concurrency cap. Regroup its `batch-manifest.json` explicitly:
    before siblings; the K-label receipt is returned only after the entire batch.
    Verify disk outputs after each wave, then replan missing sessions until dry.
 
-`weave-cursor-run.py` was retired with AutoCursor. Cursor miners use T3
-`delegate_task` children; follow `/cursor-workflows` for that route.
+`weave-cursor-run.py` and AutoCursor are retired. No Cursor miners; use supported roles under `/agent-routing`.
 
 - **Workflow (preferred for staged mode):** a `pipeline`/`parallel` of `agent()`
   calls, each given the miner prompt below + a findings JSON schema; the workflow

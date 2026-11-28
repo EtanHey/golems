@@ -85,9 +85,9 @@ What the skill does under the hood:
 /agada-bench build \
   --session <jsonl> \
   --domain family \
-  --judges claude,codex,cursor,gemini \
+  --judges claude,codex,gemini \
   --schema v1.1-3p-1s \
-  --primary-judges claude,codex,cursor \
+  --primary-judges claude,codex \
   --shadow-judge gemini
 ```
 

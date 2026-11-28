@@ -131,7 +131,7 @@ for Touch ID on every launch, so it is only for a session Etan starts himself.
 
 **Wrapper scripts (Etan's own interactive sessions only; never for agent launches):**
 ```bash
-cursor-secure   # op run --env-file secrets.env -- cursor
+codex-secure    # op run --env-file secrets.env -- codex
 claude-secure   # op run --env-file secrets.env -- claude
 with-secrets    # op run --env-file secrets.env -- <any command>
 ```

@@ -13,7 +13,6 @@
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
-| Trigger Bugbot | `gh pr comment <N> --body "bugbot run"` | **Opt-in, L or very important/core-risk PRs only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Never wait or block; record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity → no entry |
 | Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Fetch once on a wake that shows a change — never in a poll loop |
 | Merge | `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` | See worktree note below |
 
@@ -25,7 +24,7 @@
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | One bounded slim read per wake (see CI + Review Waiting below) |
 | No native `Monitor` | A watch must not be a model loop in this session | T3 `watch_pull_request` and delegate completion wakes first; else one pinned-head `pr-watch` process for CI. No collab-monitor wakes |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
-| No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
+| No native review-bot tool | Can't invoke Codex Cloud through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
 | No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)), and name the applied policy in the PR body |
 
 ## Worktree Merge Mechanics
@@ -56,30 +55,7 @@ gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@codex review"
 ```
 
-**Bugbot is not on this list.** Request it only for an L PR or a very important/core-risk PR
-(daemon/engine/transport, security, release), never for routine XS/S/M PRs or where repo policy
-bans it. Record `Bugbot: unavailable (usage)` in the PR body only for an actual request
-that is unavailable or a real usage/rate/spend-limit notice on this PR. Routine PR
-with no Bugbot activity: no request, wait, body entry or extra step. Never wait, retry or block merge.
-If eligible and available, with no current-head coverage:
-
-```bash
-gh pr comment <N> --body "bugbot run"   # eligible L/core-risk PR only: once, or once more later only if round-1 coverage is stale
-```
-
-Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
-
-For every S-or-larger PR, run the read-only diff pass via `/agent-routing` and the T3 child procedure below
-once per head after routed inner review and before exact-head merge checks; XS skips it.
-Cursor uses the T3 Auto sentinel `target: {providerInstanceId: "cursor", model: "default"}`. Findings only, never edit or push; this advisory bot-tier
-pass never replaces the routed reviewer. Answer every finding before merge; real findings
-after merge open a NEW PR. Record `Cursor pass: head=<sha> findings=<count>` in the PR body,
-or `Cursor pass: unavailable (<reason>)` on errors/quota exhaustion and proceed without retry
-or blocking. If this dispatch exhausted quota, name it as the cause. Bugbot eligibility is unchanged.
-
-A GitHub `cursor[bot]` usage/rate/spend-limit notice is Bugbot activity, even on XS: record `Bugbot: unavailable (usage)` in the PR body; it is never a local `Cursor pass:` failure.
-
-Diff-pass procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
+No Cursor in the fleet. Never dispatch Cursor or request Bugbot.
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 

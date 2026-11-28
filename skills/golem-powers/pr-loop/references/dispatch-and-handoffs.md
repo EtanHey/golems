@@ -9,7 +9,7 @@ Read this when a PR loop starts, stops early, runs autonomously, or has separate
 **End state, precisely:** done = required checks GREEN and the routed review clean on the **LATEST**
 commit. Not "a green run exists" — green on the commit that is actually at the head of the PR. Review
 bots are advisory: answer a bot that flags something important, but a silent or rate-limited bot is
-recorded as unavailable in the PR body only if actually requested or a real usage notice was posted; normal Bugbot silence on a routine PR needs no entry. Bots are never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
+recorded as unavailable in the PR body only if actually requested or a real usage notice was posted; No Cursor or Bugbot in the fleet; never request them. Bots are never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
 
 **The four explicit turns**, in order, none skipped and none merged into a neighbour:
 1. fix
@@ -69,7 +69,7 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 > when they don't actually need them, instead of just pin-gating it."
 
 Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold.
-Every non-Cursor spawn pins its model explicitly (canon #5).
+Every spawn pins its model explicitly (canon #5).
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 Resolve roles via `node scripts/model-roles.mjs <role> --field model|alias` (one field).
 Choose effort per `/large-plan` phase, record `role · effort · why`, and pass it explicitly

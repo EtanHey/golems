@@ -42,7 +42,7 @@ Notes:
 ## Verdict — when each wins
 
 - **Cursor `/multitask`:** a human is in the Cursor editor, has independent prompts, wants the foreground free. Best UX for interactive parallel work; weakest for automation.
-- **Cursor work in a T3 thread:** use `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). One child per file-backed pointer brief; each brief requires a report to the collab. No headless CLI fan-out, AutoCursor runner or background Cursor loop. The historical timing comparison does not authorize those routes.
+No Cursor in the fleet. Cursor is retired; use supported Codex or Claude roles through `/agent-routing`.
 - **Claude Workflow tool:** inside a Claude session; want the parent to *decide* the decomposition; summaries return to parent.
 - **cmux fleet:** visible, multi-vendor, long-running, human-watchable work outside T3; Cursor child work uses the T3 route above.
 - **Serial (no parallelism):** single coherent edit or sequentially-dependent steps.

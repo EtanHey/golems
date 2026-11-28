@@ -66,9 +66,9 @@ Why not the most-confident judge: confidence ≠ accuracy. claudeJudge's calibra
 
 | Situation | Override |
 |---|---|
-| Reproducing a v1.1 Run 1–4 result | Use all 4 (`--judges claude,codex,gemini,cursor`) — the historical gold was built with cursor in panel. |
+| Reproducing a v1.1 Run 1–4 result | Replay the saved historical four-judge receipts only; never launch a new Cursor judge. |
 | One judge's API is down | Run with N-1 judges; pass `--liveness-check warn-only`. Re-run later with the failed judge to complete liveness. |
-| Suspected calibration drift on one judge | Add a 4th independent judge (cursor or a custom 5th) for that run only; compare κ̄. |
+| Suspected calibration drift on one judge | Use a supported independent judge under the bench contract; never Cursor. |
 | Cost-constrained smoke test | Single-judge run (claudeJudge only) is OK for adapter-spawn-brief smoke tests. Don't use the output as gold. |
 | New domain (unvalidated) | Run a single-judge dry-run first (see `workflows/add-domain.md`); only spin up the full panel after the rubric fit is verified. |
 

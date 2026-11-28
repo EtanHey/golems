@@ -10,7 +10,7 @@ Every collab declares the route before spawning:
 ## Agent Routing
 | Task | Tool | Agent ID | Surface/Workspace | Goal File | Report Path | DONE Marker | Status |
 |---|---|---|---|---|---|---|---|
-| Scan schema | Cursor | agent:abc | surface:XX / workspace:1 | goals/schema.md | reports/schema.md | DONE_SCHEMA | PENDING |
+| Scan schema | Gemini gatherer | agent:abc | surface:XX / workspace:1 | goals/schema.md | reports/schema.md | DONE_SCHEMA | PENDING |
 | Implement fix | Codex | agent:def | surface:YY / workspace:1 | goals/fix.md | reports/fix.md | DONE_FIX | PENDING |
 | Coordinate | Claude | self | self | collab.md | final-report.md | DONE_ORC | IN_PROGRESS |
 ```
@@ -20,8 +20,8 @@ If a row points at an existing managed worker, supersede only within the same PR
 ## Mid-Sprint Gate
 
 1. Claude context above 50% while workers are idle -> route remaining gather/implementation work now.
-2. Dead Cursor/Codex surface -> recover the managed lane within 60 seconds and redeliver its file-backed goal.
-3. Claude running bulk SQL, grep, scans, or git-history analysis -> Cursor-work violation.
+2. Dead worker surface -> recover the managed lane within 60 seconds and redeliver its file-backed goal.
+3. Claude running bulk SQL, grep, scans, or git-history analysis -> gathering-route violation.
 4. Dispatching lead with no fleet-canon-#7 guard -> fired-and-forgot violation; flag the lead.
 5. Repeated large scrollback reads despite a report/DONE contract -> wait on the artifact instead.
 6. Goal narrowed from the user mission to one issue/PR -> restore the full mission in the file-backed goal; supersede only within the same PR, and any additional PR gets a fresh implementer with a compact checkpoint.
@@ -34,9 +34,7 @@ artifact, not worker narration or a DONE marker.
 
 ## Incident Lessons
 
-- **AP1: idle Cursor while Claude gathers.** The first action after spawning a worker is delivery; verify it accepted work within 15 seconds.
-- **AP2: Cursor changes files.** Cursor prompts say `READ-ONLY: Do NOT modify any files`, name the report path, and exit after findings.
-- **AP3/AP6: invented Cursor limits or pinned models.** Fleet canon #1 owns Cursor model selection. Its default path is unlimited; never skip audits for a blanket "Cursor Pro usage limit."
+- Historical Cursor-specific AP1/AP2/AP3 incidents are retained in Git history. No Cursor in the fleet.
 - **AP4: Claude implements.** A coordinating Claude does not implement; `/agent-routing` § Lead Topology owns the only tiny-lead carve-out and its exact bound.
 - **AP5: orchestrator writes long content.** For documents over 50 lines, delegate drafting; the orchestrator supplies a short outline and synthesizes.
 - **AP7: model self-identification.** Codex text is not runtime proof. Read the child's post-`task_started` session `turn_context`.
@@ -63,7 +61,7 @@ PAUSE. Am I about to change code or files?
 - Coordinating Claude? Route it to Codex unless `/agent-routing` § Lead Topology authorizes its tiny-lead exception.
 - Domain agent with no assigned Codex? It may be the implementer.
 - Domain agent with assigned Codex? Send it to that Codex.
-- Read-only scan/query? Cursor.
+- Read-only scan/query? Gemini gatherer under the SSOT.
 - SkillCreator-domain path without skillCreator? Stop and route for audit.
 ```
 
@@ -77,14 +75,12 @@ crossing it as a routing smell and inspect whether the lead absorbed worker work
 
 | Task | Tool | Rationale |
 |---|---|---|
-| [gathering task] | Cursor (read-only) | Scanning, no changes |
+| [gathering task] | Gemini gatherer (read-only) | Scanning, no changes |
 | [implementation task] | Codex | File changes |
 | [coordination task] | Claude | Orchestration and user interaction |
 
 Rules:
-- Cursor prompts include "READ-ONLY: Do NOT modify any files" and name where the coordinator will record the returned findings.
-- Cursor model selection: fleet canon #1.
-- Codex consumes Cursor's distilled findings, not raw data.
+- No Cursor in the fleet. Gatherers return read-only findings; the routed implementer consumes the distilled handoff.
 - Visible launch: fleet canon #6; invocation details: `/repogolem`.
 - One PR = one fresh implementer; supersede a changed mission within the same PR with one full file-backed goal (`/agent-routing` § Lead Topology #5).
 - Monitor/close lifecycle: fleet canon #7; worker-state detail: [delegation operations](delegation-operations.md#goal-delegation-contract).

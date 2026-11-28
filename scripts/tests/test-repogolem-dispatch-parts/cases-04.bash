@@ -67,7 +67,7 @@ function split_case_062() {
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -ne 0 ]
-    grep -F -q -- "T3 delegate_task" <<< "$output"
+    grep -F -q -- "Cursor is retired" <<< "$output"
     ! grep -F -q -- "CURSOR_MUST_NOT_RUN" <<< "$output"
 }
 
@@ -481,7 +481,7 @@ function split_case_076() {
     ' _ "$REGISTRY_FILE" "$DISPATCHER"
 
     [ "$status" -ne 0 ]
-    grep -F -q -- "T3 delegate_task" <<< "$output"
+    grep -F -q -- "Cursor is retired" <<< "$output"
     ! grep -F -q -- "CURSOR_MUST_NOT_RUN" <<< "$output"
 }
 

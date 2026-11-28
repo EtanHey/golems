@@ -93,7 +93,7 @@
       "assertions": [
         {
           "name": "refuses-merge-with-zero-reviews",
-          "description": "Response does not merge when reviewDecision is empty and no routed review verdict exists at headRefOid; required review counts come from /agent-routing \u00a7 Routing rules (SSOT), not a comment-count threshold"
+          "description": "Response does not merge when reviewDecision is empty and no routed review verdict exists at headRefOid; required review counts come from /agent-routing § Routing rules (SSOT), not a comment-count threshold"
         },
         {
           "name": "distinguishes-clean-from-approved",
@@ -132,7 +132,7 @@
     {
       "id": 6,
       "prompt": "I pushed fixes for BLOCKING CodeRabbit findings on PR #215 after round 1. Can I merge now?",
-      "expected_output": "Agent requests round 2 review of the blocking fixes at headRefOid and checks required checks before merge. One clean initial review would have sufficed; no forced second clean round. There is no round 3: after round 2 the lead verifies the final fixes.",
+      "expected_output": "Agent requests round 2 review of the blocking fixes at headRefOid and checks required checks before merge. One clean initial review would have sufficed; no forced second clean round. There is no round 3: after round 2 the lead verifies the final fixes. No Cursor in the fleet; never request Bugbot.",
       "files": [],
       "assertions": [
         {
@@ -141,7 +141,7 @@
         },
         {
           "name": "requests-re-review-after-fixes",
-          "description": "Response includes triggering re-review (e.g., @coderabbitai review, @cursor @bugbot re-review) after pushing fixes"
+          "description": "Response includes triggering re-review (e.g., @coderabbitai review) after pushing fixes"
         },
         {
           "name": "canon-nine-round-cap",
@@ -179,7 +179,9 @@
       "prompt": "I fixed the BrainBar MCP framing bug. All 37 Swift tests pass and socat returns a valid response. State snapshot in fixtures/daemon-pr-unit-tests-only.txt. Let's create the PR and merge.",
       "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Opens the PR on fast checks, but the real Claude Code session through the daemon (MCP tools available AND returning real results) is mandatory at the feature-batch gate, before the fix is released, installed or declared done. A fix that alone ships to users is a single-PR batch and runs that gate itself, before release/install and before the merge when merging deploys it. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
       "root_cause_tested": "daemon-fix-without-real-client-test — from mining synthesis finding #1: BrainBar had 3 PRs before the actual cause was found because nobody tested with a real Claude session",
-      "files": ["fixtures/daemon-pr-unit-tests-only.txt"],
+      "files": [
+        "fixtures/daemon-pr-unit-tests-only.txt"
+      ],
       "assertions": [
         {
           "name": "identifies-daemon-socket-mcp-change",
@@ -219,7 +221,9 @@
       "prompt": "Dashboard componentization is done — split the big component into 3 smaller ones with full test coverage. State snapshot in fixtures/normal-feature-pr.txt. Let's get this merged.",
       "expected_output": "Agent follows the standard PR loop (verify, commit, push, PR, review, merge, cleanup) WITHOUT triggering the daemon verification gate. This is a React component refactor — no daemon/socket/MCP changes. The daemon gate should ONLY fire for daemon/socket/MCP PRs.",
       "root_cause_tested": "daemon-gate-false-positive — ensures the daemon verification gate does NOT trigger on normal code changes, which would slow down every PR unnecessarily",
-      "files": ["fixtures/normal-feature-pr.txt"],
+      "files": [
+        "fixtures/normal-feature-pr.txt"
+      ],
       "assertions": [
         {
           "name": "follows-standard-pr-loop",
@@ -254,7 +258,9 @@
       "prompt": "The final merge plan is in fixtures/squash-merge-draft-plan.txt. Check it against current repo law and correct any violation before the lead merges.",
       "expected_output": "Agent catches the stale squash-merge prescription, corrects the command to `gh pr merge 612 --merge --match-head-commit <green head> --delete-branch`, and cites the R-010 interim law: merge commits remain the default until the BrainLayer commit-traceability gate ships with BrainLayer-present detection verified. Agent says to check the canonical registry R-010 row's current state before assuming squash has become active.",
       "root_cause_tested": "r010-repair-path-doc-drift — a pre-existing draft plan already contains the obsolete squash prescription and must be repaired rather than repeated",
-      "files": ["fixtures/squash-merge-draft-plan.txt"],
+      "files": [
+        "fixtures/squash-merge-draft-plan.txt"
+      ],
       "assertions": [
         {
           "name": "detects-stale-squash-prescription",
@@ -531,12 +537,12 @@
       "id": 19,
       "name": "paginate-all-review-sources",
       "prompt": "PR #302 has 130 discussion comments, 120 inline comments and 110 review bodies. Show commands to read all feedback.",
-      "expected_output": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex/Cursor adapters; does not rely on gh pr view --comments.",
+      "expected_output": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex adapter; does not rely on gh pr view --comments. No Cursor in the fleet; never request Bugbot.",
       "files": [],
       "assertions": [
         {
           "name": "paginate-all-review-sources",
-          "description": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex/Cursor adapters; does not rely on gh pr view --comments."
+          "description": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex adapter; does not rely on gh pr view --comments."
         }
       ]
     },
@@ -544,7 +550,7 @@
       "id": 20,
       "name": "non-core-panel",
       "prompt": "This PR changes skill documentation only. No repo bot restriction. Which reviewers do you invoke?",
-      "expected_output": "Bots are tiered by canon #9: no full bot panel and no Bugbot on a non-core docs diff, filtered by the repo's bot policy. Who reviews and how many come from /agent-routing § Routing rules (SSOT); bots run after the inner loop and are advisory.",
+      "expected_output": "Bots are tiered by canon #9: no full bot panel and no Bugbot on a non-core docs diff, filtered by the repo's bot policy. Who reviews and how many come from /agent-routing § Routing rules (SSOT); bots run after the inner loop and are advisory. Cursor and Bugbot are retired at every size, including core paths.",
       "files": [],
       "assertions": [
         {
@@ -753,7 +759,7 @@
       "id": 52,
       "name": "rate-limited-bugbot-after-inner-loop-not-awaited",
       "prompt": "The inner loop is done and the routed review is clean at headRefOid with CI green. You summoned Bugbot on this daemon diff, but Bugbot hasn't reported and replied that it is rate limited. An hour after merge, Bugbot posts a real HIGH finding. What do you do at each point?",
-      "expected_output": "Before merge: don't wait. Bots run after the inner loop and are advisory; record Bugbot as unavailable in the PR body and merge on the routed review. After merge: the real HIGH finding still gets fixed, in a NEW PR (canon #9), not another commit on the merged branch.",
+      "expected_output": "Before merge: don't wait. Bots run after the inner loop and are advisory; record the already-requested retired bot as unavailable in the PR body and never request it again and merge on the routed review. After merge: the real HIGH finding still gets fixed, in a NEW PR (canon #9), not another commit on the merged branch.",
       "files": [],
       "assertions": [
         {

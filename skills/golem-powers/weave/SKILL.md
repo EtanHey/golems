@@ -24,7 +24,8 @@ and verified change is not convergence.
   may be regenerated; conclusions may not live only in `docs.local/`.
 - Gather runs off-Claude; Claude performs judgment. `/agent-routing`
   `references/model-and-effort.md` § Decide From the Mission owns model/effort choice; quota-probe before launch,
-  preserve worker lineage. For Cursor, use T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). One pointer brief per child; each reports to the collab. No AutoCursor, headless CLI fan-out or background Cursor loops.
+  preserve worker lineage. One pointer brief per child; each reports to the collab.
+  No Cursor in the fleet. Cursor is retired; use supported roles through `/agent-routing`.
 - New/manual dispatches give each miner K sessions with a STATIC-first prompt (centerpieces
   keep a dedicated miner; [cache shape](references/topology.md#fan-out-prompt-shape-cache-economics)),
   centerpieces first, in bounded waves. The retained legacy cursor runner is not a route

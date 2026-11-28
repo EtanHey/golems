@@ -13,7 +13,7 @@ CODEX_COMMAND = ("nohup sh -c 'pr-watch <owner/repo> <N> --head <sha> --deadline
                  "\\ > docs.local/pr-watch/<N>-<sha>.log 2>&1 &")
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
 SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
-            "adapters/cursor.md", "adapters/capabilities.yaml"]
+            "adapters/capabilities.yaml"]
 
 
 def text(relative):
@@ -120,7 +120,7 @@ RULE_NO_POLLING = ("No polling turns. No collab-monitor wakes in Codex, and no \
 RULE_WATCHING = ("anything that must sit and watch (a PR, CI, a file) uses a cheap gpt-6-luna "
                  "sub-agent, never a big-context Sol or lead session.")
 RULE_RATE_LIMITS = "Never wait on rate limits."
-ADAPTERS = ["adapters/claude.md", "adapters/codex.md", "adapters/cursor.md"]
+ADAPTERS = ["adapters/claude.md", "adapters/codex.md"]
 POLICY_LINK = "references/review-loop.md#waiting-policy-no-polling-turns"
 
 
@@ -249,7 +249,7 @@ RULE_MERGING = ("Merging: small PRs merge right away on fast CI + 1 review. Heav
                 "FEATURE BATCH (a full plan or feature change tested together), not per PR and not as a "
                 "pre-merge gate.")
 RULE_XS_S = "XS/S: 1 reviewer, 1 round."
-RULE_BOTS = ("Review bots (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. "
+RULE_BOTS = ("Review bots (CodeRabbit/Codex) run only AFTER the inner loop, and they're advisory. "
              "Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.")
 RULE_PARALLEL = "Give each test/build its own ports and temp folders so they run in parallel."
 SSOT = "`/agent-routing` § Routing rules (SSOT)"

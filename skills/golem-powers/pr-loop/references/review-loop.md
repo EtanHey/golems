@@ -71,70 +71,22 @@ gh pr comment <N> --body "@greptileai review"
 gh pr comment <N> --body "@codex review"
 ```
 
-**Bot tiering — Cursor Bugbot is OPT-IN, never a panel default (orc ruling, 2026-09-05).**
-Canon #9 tiers the roster. Clause 4 of the origin ruling, verbatim: *"bot tiering — full 4-bot panel
+**Bot tiering (orc ruling, 2026-09-05).** Canon #9 tiers the roster. Clause 4 of the origin ruling, verbatim: *"bot tiering — full 4-bot panel
 only on daemon/engine/transport diffs, else CodeRabbit + one, one pass per bot, duplicate findings
 answered once + dup-links."*
-That quote is provenance. Today the bots are advisory and run after the inner loop, and who reviews
-and how many come from `/agent-routing` § Routing rules (SSOT), which wins on conflict.
+That quote is provenance; its retired Cursor/Bugbot membership is superseded by the 2026-11-27 no-Cursor rule. Bots remain advisory after the inner loop; `/agent-routing` owns reviewer selection and counts.
 
-**Bugbot eligibility (Etan, 2026-11-04): an L PR or a very important/core-risk PR**
-(daemon/engine/transport, security, release). Never request it for routine XS/S/M PRs.
-Repo bans still win (8a.0). If eligible and available, request once, only when no
-current-head automatic review already exists:
+No Cursor in the fleet. Never dispatch a Cursor diff pass or request Bugbot, including for L/core paths. The routed other-vendor reviewer remains required; `/agent-routing` § Routing rules (SSOT) owns selection and counts. Existing posted findings are investigated under the normal finding rules.
 
-```bash
-gh pr comment <N> --body "bugbot run"   # eligible L/core-risk PR only
-```
+#### 8a.2 — Retired Cursor endpoint
 
-[Cursor documents this trigger](https://cursor.com/docs/bugbot); commands posted by bot accounts or GitHub Apps are ignored. Eligibility remains L/core-risk only.
-
-Record `Bugbot: unavailable (usage)` in the PR body only if Bugbot was actually
-requested and is unavailable, or it posted a real usage/rate/spend-limit notice
-on this PR. A routine XS/S/M PR with no Bugbot activity needs no request, wait,
-record or extra step. After the one eligible request, continue directly
-to the Cursor endpoint pass if owed (8a.2), then exact-head merge checks in the same turn. No "awaiting Bugbot" state, watch,
-grace period, retry or re-review gate; never block on its availability/verdict.
-Actual findings still follow the normal finding rules; important findings must be
-investigated and resolved, including in a new PR if they arrive after merge.
-This replaces the 2026-09-05 core-path-only eligibility ruling.
-
-#### 8a.2 — The Cursor diff pass is READ-ONLY
-
-For every **S-or-larger PR**, run one pass per head after the routed inner-loop review
-and before exact-head merge checks. **XS skips it.** This is an advisory bot-tier pass,
-like CodeRabbit; it never replaces the routed reviewer. Cursor uses the T3 Auto sentinel `target: {providerInstanceId: "cursor", model: "default"}`.
-It reports findings only and never edits files or pushes to the PR branch.
-
-T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
-
-The brief pins the actual PR base and head SHA and requires findings only, each labelled BLOCKING or NON-BLOCKING ([classify](#classify-each-review-comment)): do not edit, create or delete files; do not push.
-
-- Scope the child to read-only findings in its brief and verify its report and branch state. This is an instruction contract, not a CLI sandbox guarantee.
-- Answer every finding like any other finding before merge. A real finding arriving after merge
-  goes into a NEW PR (canon #9).
-- Record `Cursor pass: head=<sha> findings=<count>` in the PR body. Reuse coverage only for that head.
-- Never block on availability: on an error or quota exhaustion, record
-  `Cursor pass: unavailable (<reason>)` and proceed to merge checks without retries or a quota wait.
-  If this pass's dispatch exhausted the shared quota, name **that dispatch** as the cause, never
-  the resulting `resource_exhausted` as an external finding (canon #3).
-- This uses the Cursor subscription, not Bugbot quota, and applies even where Bugbot is banned.
-  Bugbot eligibility remains unchanged (8a.1).
-
-A GitHub `cursor[bot]` usage/rate/spend-limit notice is Bugbot activity, even on XS: record `Bugbot: unavailable (usage)` in the PR body; it is never a local `Cursor pass:` failure. Routing: `/agent-routing` § Routing rules (SSOT).
+No Cursor in the fleet. There is no replacement endpoint pass; use the routed reviewer and exact-head checks.
 
 Bot-invocation comments are agent-authored PR comments, so the signature block
 applies to them too — the `gh()` wrapper will append it automatically once it
 ships; until then, sign them by hand like any other comment.
 
-Reviewer roster reality can degrade. If Greptile is unavailable, Cursor/Bugbot
-is billing-blocked, or CodeRabbit is rate-limited, do not burn dead mentions.
-Bugbot unavailability needs no replacement bot and never delays merge; record
-`Bugbot: unavailable (usage)` in the PR body only for an actual request or real
-usage notice. For a missing routed reviewer, use
-the routing pointer in Step 8a.2 to select a replacement reviewer; retain the
-Macroscope + `cr review --plain` pre-commit checks (not a substitute for the routed
-pair review), and document which reviewers were unavailable in the PR.
+Reviewer roster reality can degrade. If Greptile is unavailable or CodeRabbit is rate-limited, do not burn dead mentions. For a missing routed reviewer, use `/agent-routing` to select a replacement reviewer; retain Macroscope + `cr review --plain` pre-commit checks (not a substitute for the routed pair review), and document which reviewers were unavailable in the PR.
 
 ### For private repos (no bot reviewers):
 
@@ -153,7 +105,7 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 Bot reviewers post on the PR. They are advisory: wait on CI and the routed review with the waiting
 policy below. Answer already-posted bot findings like any finding; never await
 a bot. Record unavailable bots only if actually requested or a real usage notice
-was posted; normal silence from a never-requested Bugbot needs no record.
+was posted. Cursor and Bugbot are retired and never requested.
 
 ### Waiting policy (no polling turns)
 
@@ -271,9 +223,7 @@ Wait in this order. Take the first option that fits:
    - `sleep N; gh pr view` loops and "watch #N" loops in a big-context lead session.
    - A duplicate watcher on the same PR: a T3 watch plus a `pr-watch`, or two `pr-watch` processes.
    - Waiting on bots or their rate limits. Review bots run after the inner loop and are advisory.
-     Answer already-posted findings like any finding. For Bugbot, record
-     `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real
-     usage/rate/spend-limit notice. A routine PR with no Bugbot activity needs no entry or step.
+     Answer already-posted findings like any finding. Cursor and Bugbot are retired; never request them.
 
 #### Watcher process: pr-watch
 
@@ -349,8 +299,6 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor (diff pass) | S-or-larger endpoint check; XS skips. | Follow `/agent-routing` and Step 8a.2; findings only, collab report. |
-| Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "bugbot run"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |
 
@@ -359,7 +307,6 @@ collection path does not reply to a thread; use `/replies` or the documented
 ```bash
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "bugbot run"   # only if eligible, available, reviewed round 1 and current-head coverage is stale
 ```
 
 Request re-review only for reviewers actually invoked whose current-head automatic review is
@@ -447,7 +394,7 @@ Max 2 review-fix rounds (canon #9). There is no round 3: after round 2 the lead 
 
 ### Classify each review comment:
 
-Every reviewer brief, routed or panel, says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." The Cursor pass gets the same line. A brief that asks for a judgement call adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus", and judges are reluctant to say no.)
+Every reviewer brief, routed or panel, says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." A brief that asks for a judgement call adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus", and judges are reluctant to say no.)
 
 | Type | Action |
 |------|--------|

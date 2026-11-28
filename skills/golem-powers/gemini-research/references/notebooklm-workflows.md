@@ -294,7 +294,7 @@ The gold standard is the brainlayer-vs-lightrag project with 96 numbered context
 ```
 1. Read repo structure → write 00-code-map.md
 2. Read key source files → write numbered context files, renaming blocked types to .txt
-3. Run Cursor with SQL queries → write 40-49 data samples
+3. Run the routed gatherer (/agent-routing) with SQL queries → write 40-49 data samples
 4. Run MCP tools → capture 60-69 live examples
 5. source_add each file with wait=True
 ```
