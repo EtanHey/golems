@@ -91,6 +91,7 @@ See [references/scoring-rubric.md](references/scoring-rubric.md) for scoring met
 #### Tier B: Live Agent Smoke (flagship skills only)
 
 - Run `live-eval-runner.sh` for top 3 discriminator evals
+- Every live run bills an API key, never a login: [Eval Auth](#eval-auth--api-keys-never-a-login)
 - Agent routing: bounded Claude in-process/headless tests → `claude.subagent.cheap`;
   visible or decision-grade Claude tests → `claude.judgment`; code tests → `codex.implement`; audits → Cursor
 - Compare captured output against assertions
@@ -137,6 +138,27 @@ Carry this one-line instruction in the body:
 ## Eval Methodology
 
 **with_skill vs without_skill comparison is MANDATORY.** No exceptions.
+
+### Eval Auth — API Keys, Never a Login
+
+**Evals and judges bill the API keys, never a login.** Every eval, judge or bench
+`claude -p` / `codex exec` call runs through the skill-creator cell (or copies its pattern):
+
+- **Claude:** `src/cell-auth.js`, `--auth api-key` (the default). The key is parsed from
+  `~/.config/golems/anthropic-api.env` (or `--api-key-file`) into the child's env only. The run
+  fails unless the child's init event reports `apiKeySource: ANTHROPIC_API_KEY`, and the record
+  carries `auth: "api-key"` and that source.
+- **Codex:** `src/codex-auth.js`, api-key mode (the default). The key from
+  `~/.config/golems/openai-api.env` is logged into a disposable `CODEX_HOME` with the real
+  `codex login --with-api-key`; the host `~/.codex/auth.json` is never read or written. The
+  record carries `auth: "api-key"` and the list-price `usd`.
+
+A bare `claude -p` or `codex exec` on the machine login bills the subscription the fleet runs on.
+A login run is an exception, only when the key path cannot do the job, and it needs that reason stated
+up front and carried in the record: Claude `--auth oauth --oauth-reason <why>`
+(`oauth_reason`), Codex subscription mode with `--subscription-reason <why>` (`subscription_reason`).
+The other way round holds too: no seat, worker or reviewer runs on a key; fleet work stays on the
+login (Etan's ruling, 2026-11-25: the API keys are paid credits, not for fleet work).
 
 ### Eval Result Provenance — Validity Gate
 

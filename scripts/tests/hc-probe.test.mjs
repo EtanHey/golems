@@ -25,7 +25,7 @@ class DiagnosticsTest(unittest.TestCase):
         denied = subprocess.CompletedProcess([], 0, json.dumps({'permissionDecisionReason': reason, 'permissionDecision': 'deny'}), 'stderr detail')
         issued = subprocess.CompletedProcess([], 0, 'issued', '')
         allowed = subprocess.CompletedProcess([], 0, '{}', '')
-        with patch.object(probe, 'hook_command', return_value='hook'), patch.object(probe.subprocess, 'run', side_effect=[allowed, denied, denied, issued, denied, allowed, denied]), patch('sys.argv', ['probe', '--repo', '.', '--branch', 'fixture', '--sha', 'a'*40, '--issuer', 'issuer']), contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
+        with patch.object(probe, 'hook_command', return_value='hook'), patch.object(probe, 'token_checkout', return_value=contextlib.nullcontext('.'), create=True), patch.object(probe.subprocess, 'run', side_effect=([allowed, denied, denied, denied, issued, denied, denied, allowed, denied] if hasattr(probe, 'run_issuer') else [allowed, denied, denied, issued, denied, allowed, denied])), patch('sys.argv', ['probe', '--repo', '.', '--branch', 'fixture', '--sha', 'a'*40, '--issuer', 'issuer']), contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
             self.assertEqual(probe.main(), 1)
         result = json.loads(stdout.getvalue())
         self.assertEqual(result['first_failure'], 'C_token')
@@ -129,15 +129,19 @@ try:
         if mode == 'mock':
             return subprocess.CompletedProcess(argv, 0, 'mock issuer OK; no token created', '')
         with contextlib.redirect_stdout(io.StringIO()) as issued:
-            fixture.issuer.issue(argv[1:], home=fixture.home,
+            token = fixture.issuer.issue(argv[1:], home=fixture.home,
                 metadata_fn=lambda op: (fixture.default, dict(fixture.pr, github='EtanHey/golems')),
                 anchor_fn=lambda home: fixture.anchor)
+        if mode == 'bad-signature':
+            Path(str(token) + '.sig').write_text('invalid signature')
         return subprocess.CompletedProcess(argv, 0, issued.getvalue(), '')
     issuer = Mock(side_effect=issue)
+    issuer_patch = (patch.object(probe, 'run_issuer', issuer) if hasattr(probe, 'run_issuer') else
+                    patch.object(probe, 'subprocess', SimpleNamespace(run=issuer, CompletedProcess=subprocess.CompletedProcess)))
     metadata = lambda target, branch: ('master', dict(name=branch, protected=False))
     argv = ['probe', '--repo', str(repo), '--branch', 'topic', '--sha', SHA, '--issuer', 'fixture-issuer']
     # Metadata and anchor provisioning are fixtures; real mode issues/signs/verifies/consumes a genuine token.
-    with patch.object(probe, 'hook_command', return_value='fixture'), patch.object(probe, 'feed', side_effect=feed), patch.object(probe, 'subprocess', SimpleNamespace(run=issuer, CompletedProcess=subprocess.CompletedProcess)), patch.object(tokens, 'anchor_bytes', return_value=fixture.anchor), patch.object(tokens, 'read_command', side_effect=fixture.gh), patch.object(tokens, 'trusted_binary', return_value='gh'), patch.object(tokens, 'own_lease_metadata', metadata), patch('sys.argv', argv), contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
+    with patch.object(probe, 'hook_command', return_value='fixture'), patch.object(probe, 'feed', side_effect=feed), issuer_patch, patch.object(tokens, 'anchor_bytes', return_value=fixture.anchor), patch.object(tokens, 'read_command', side_effect=fixture.gh), patch.object(tokens, 'trusted_binary', return_value='gh'), patch.object(tokens, 'own_lease_metadata', metadata), patch('sys.argv', argv), contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
         rc = probe.main()
     assert (repo / '.git/config').read_bytes() == config, 'probe changed scratch remotes'
     issuer.assert_called_once()
@@ -151,11 +155,14 @@ def measure(mode):
     run = subprocess.run([sys.executable, '-c', cell, str(root), mode], capture_output=True, text=True, check=True)
     return json.loads(run.stdout)
 
-mock, candidate = measure('mock'), measure('real')
-assert mock['rc'] == 1 and mock['result']['ok'] is False and mock['result']['first_failure'] == 'C_spent', mock
-assert mock['result']['steps']['C_token'][0] == 'ALLOW' and mock['result']['steps']['C_spent'][0] == 'NOT_SPENT', mock
-assert mock['result']['details']['C_spent']['rc'] == 1 and 'C_spent' in mock['stderr'], mock
-expected = dict(A_own_lease='ALLOW', A2_plain_force='DENY', A3_foreign='DENY', B_issue='OK', C_token='ALLOW', C_spent='OK', D_replay='ALLOW', E_master='DENY')
+mock, candidate, invalid = measure('mock'), measure('real'), measure('bad-signature')
+assert invalid['result']['first_failure'] == 'C_token', invalid
+assert invalid['result']['steps']['B_issue'][0] == 'OK', invalid
+assert json.loads(invalid['result']['details']['C_spent']['stdout'])['issued'] == 1, invalid
+assert mock['rc'] == 1 and mock['result']['ok'] is False and mock['result']['first_failure'] == 'C_token', mock
+assert mock['result']['steps']['C_token'][0] == 'DENY' and mock['result']['steps']['C_spent'][0] == 'NOT_SPENT', mock
+assert mock['result']['details']['C_spent']['rc'] == 1 and 'C_token' in mock['stderr'], mock
+expected = dict(A_own_lease='ALLOW', A2_plain_force='DENY', A3_foreign='DENY', B_no_token='DENY', B_issue='OK', C_token='ALLOW', C_spent='OK', D_replay='DENY', D_own_replay='ALLOW', E_master='DENY')
 assert candidate['rc'] == 0 and candidate['result']['first_failure'] is None, candidate
 assert {key: value[0] for key, value in candidate['result']['steps'].items()} == expected, candidate
 assert ' https://github.com/pingdotgg/t3code.git ' in candidate['commands'][2], candidate
@@ -167,7 +174,7 @@ print(json.dumps(dict(mock=mock['result'], candidate=candidate['result'])))
 `], { cwd: resolve(import.meta.dirname, "../.."), encoding: "utf8" });
   assert.equal(run.status, 0, run.stderr);
   const proof = JSON.parse(run.stdout);
-  assert.equal(proof.mock.first_failure, "C_spent");
+  assert.equal(proof.mock.first_failure, "C_token");
   assert.equal(proof.candidate.ok, true);
-  console.log("source-hook proof: mock issuer rejected at C_spent; real signed token PASS 8/8 (metadata/anchor provisioning stubbed)");
+  console.log("source-hook proof: mock issuer rejected at C_token; real signed token PASS 10/10 (metadata/anchor provisioning stubbed)");
 });
