@@ -57,7 +57,9 @@ EOF
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
 Before any reader dispatch: run python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" to admit the whole dense/index.tsv.
 For targeted debrief/review stills: use admit "$WORKDIR" <all moment paths> instead.
-Before any reader dispatch: estimate ALL sheets x price (default \$0.10/sheet including retry); above \$5 STOP and state cost.
+Before any reader dispatch: estimate ALL sheets x price (default \$0.10/sheet including retry); above \$5 STOP and state cost unless a lead-authorized ceiling is recorded (SKILL.md cost section).
+Authorization flags record an attestation the script cannot verify: pass --authorized-usd only when the brief quotes the lead's explicit dollar amount, with --authorized-by naming that lead; otherwise hold.
+Re-plan clears authorization; record it with reader-policy.py admit AFTER default.sh plan (this wrapper does not forward authorization flags).
 Gather (gatherers read every sheet; you never open one), first that works:
   1. Tool-free Claude reader: per batch of <=15 sheets from dense/index.tsv:
 EOF
@@ -72,7 +74,9 @@ EOF
   (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN-start.jpg / moment-NN-midpoint.jpg stills go to gatherers)
 Before any reader dispatch: run python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" to admit the whole dense/index.tsv.
 For targeted debrief/review stills: use admit "$WORKDIR" <all moment paths> instead.
-Before any reader dispatch: estimate ALL stills x price (default \$0.10/still including retry); above \$5 STOP and state cost.
+Before any reader dispatch: estimate ALL stills x price (default \$0.10/still including retry); above \$5 STOP and state cost unless a lead-authorized ceiling is recorded (SKILL.md cost section).
+Authorization flags record an attestation the script cannot verify: pass --authorized-usd only when the brief quotes the lead's explicit dollar amount, with --authorized-by naming that lead; otherwise hold.
+Re-plan clears authorization; record it with reader-policy.py admit AFTER default.sh plan (this wrapper does not forward authorization flags).
 Gather (gatherers read every still; you never open one), first that works:
   1. Tool-free Claude reader: up to 24 stills means two batches (<=15 per batch):
 EOF

@@ -19,10 +19,10 @@ def save(path, row):
     pending.replace(path)
 
 
-def begin(work):
+def begin(work, auth=None):
     row = {'run_id': str(uuid.uuid4()), 'started_ns': time.time_ns()}
     save(Path(work)/'visual/run.json', row)
-    save(Path(work)/'visual/cost-admission.json', {**row, 'status': 'PENDING', 'sheets': []})
+    save(Path(work)/'visual/cost-admission.json', {**row, **(auth or {}), 'status': 'PENDING', 'sheets': []})
     return row
 
 
@@ -33,32 +33,52 @@ def index_images(index):
         and line.split('\t')[0] not in ('sheet', 'sheet_file')))
 
 
-def admit_cost(sheets, price=0.10):
+def authorization(row):
+    if 'authorized_usd' not in row and 'authorized_by' not in row:
+        return 5
+    amount, who = row.get('authorized_usd'), row.get('authorized_by')
+    if (type(amount) not in (int, float) or not math.isfinite(amount) or amount <= 0
+            or not isinstance(who, str) or not who.strip()):
+        raise ValueError('COST_HOLD: positive finite authorized-usd and non-empty authorized-by required')
+    return amount
+
+
+def admit_cost(sheets, price=0.10, ceiling=5):
     if not math.isfinite(price) or price <= 0:
         raise ValueError('positive finite price-per-sheet-usd required')
     estimate = round(sheets*price, 6)
     print(f'Visual cost estimate: {sheets} sheets x ${price:.2f} = ${estimate:.2f} '
           '(planning allowance including one retry; actual billing may differ)', file=sys.stderr)
-    if estimate > 5:
-        raise ValueError('COST_HOLD: estimate exceeds $5; stop and state cost before reading')
+    if not math.isfinite(estimate) or estimate > ceiling:
+        if ceiling == 5:
+            raise ValueError('COST_HOLD: estimate exceeds $5; stop and state cost before reading')
+        raise ValueError(f'COST_HOLD: estimate ${estimate:.2f} exceeds authorized ${ceiling:.2f}')
     return estimate
 
 
-def admit(work, images, price=.10):
+def admit(work, images, price=.10, authorized_usd=None, authorized_by=None):
     work = Path(work).resolve()
     run_path = work/'visual/run.json'
     run = json.loads(run_path.read_text()) if run_path.is_file() else begin(work)
     images = list(dict.fromkeys(str(Path(p).resolve()) for p in images))
     old_path = work/'visual/cost-admission.json'
+    auth = {} if authorized_usd is None and authorized_by is None else {
+        'authorized_usd': authorized_usd, 'authorized_by': authorized_by}
+    authorization(auth)
     if old_path.is_file():
         old = json.loads(old_path.read_text())
         if old.get('run_id') == run['run_id']:
+            authorization(old)  # corrupt prior authorization must fail closed
+            if not auth:
+                if old.get('status') == 'ADMITTED' and not 0 <= old['estimated_usd'] <= authorization(old):
+                    raise ValueError('COST_HOLD: recorded estimate exceeds authorization')
+                auth = {k: old[k] for k in ('authorized_usd', 'authorized_by') if k in old}
             images = list(dict.fromkeys(old.get('sheets', []) + images))
             price = max(price, old.get('price_per_sheet_usd', price))
-    row = {**run, 'sheets': images, 'price_per_sheet_usd': price, 'status': 'PENDING'}
+    row = {**run, **auth, 'sheets': images, 'price_per_sheet_usd': price, 'status': 'PENDING'}
     try:
         row['estimated_usd'] = round(len(images)*price, 6)
-        admit_cost(len(images), price)
+        admit_cost(len(images), price, authorization(row))
         if not images:
             raise ValueError('COST_PENDING: no sheets yet; extract then admit the whole index')
         row['image_sha256'] = {p: hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in images}
@@ -79,8 +99,17 @@ def validate(admission, images):
     run = json.loads((path.parent/'run.json').read_text())
     if row.get('status') != 'ADMITTED' or row.get('run_id') != run.get('run_id'):
         raise ValueError('COST_ADMISSION_REQUIRED: missing, held or stale run admission')
-    if not 0 <= row['estimated_usd'] <= 5:
-        raise ValueError('COST_HOLD: run estimate exceeds $5')
+    ceiling = authorization(row)
+    price = row['price_per_sheet_usd']
+    if type(price) not in (int, float) or not math.isfinite(price) or price <= 0:
+        raise ValueError('COST_HOLD: positive finite price-per-sheet-usd required')
+    estimate = round(len(row['sheets']) * price, 6)
+    if not math.isfinite(estimate) or row['estimated_usd'] != estimate:
+        raise ValueError('COST_HOLD: recorded estimate does not match sheet count times price')
+    if not 0 <= row['estimated_usd'] <= ceiling:
+        if ceiling == 5:
+            raise ValueError('COST_HOLD: run estimate exceeds $5')
+        raise ValueError(f'COST_HOLD: run estimate ${row["estimated_usd"]:.2f} exceeds ${ceiling:.2f}')
     for image in images:
         image = str(Path(image).resolve())
         if image not in row['sheets'] or row['image_sha256'].get(image) != hashlib.sha256(Path(image).read_bytes()).hexdigest():
@@ -167,15 +196,21 @@ def main():
         p.add_argument('action'); p.add_argument('work', type=Path)
         p.add_argument('--index', type=Path)
         p.add_argument('--price-per-sheet-usd', type=float, default=.10)
+        p.add_argument('--authorized-usd', type=float)
+        p.add_argument('--authorized-by')
         p.add_argument('images', nargs='*')
         a = p.parse_args()
+        auth = {} if a.authorized_usd is None and a.authorized_by is None else {
+            'authorized_usd': a.authorized_usd, 'authorized_by': a.authorized_by}
+        authorization(auth)
         if a.action == 'plan':
-            begin(a.work)
+            begin(a.work, auth)
         index = a.index or a.work/'dense/index.tsv'
         if not a.images and not index.is_file() and a.action == 'plan':
             print('COST_PENDING: whole-run index not ready; admit after extraction, before ANY reader', file=sys.stderr)
             return
-        admit(a.work, a.images or index_images(index), a.price_per_sheet_usd)
+        admit(a.work, a.images or index_images(index), a.price_per_sheet_usd,
+              a.authorized_usd, a.authorized_by)
     else:
         check(*sys.argv[1:])
 

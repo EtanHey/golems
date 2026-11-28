@@ -63,3 +63,15 @@ def test_plan_names_claude_default_and_explicit_gemini_only(tmp_path):
     assert 'providerInstanceId: "antigravity"' not in result.stdout
     assert 'Gemini only when explicitly named:' in result.stdout
     assert 'Explicit gatherer model/exclusion' in result.stdout
+
+
+@pytest.mark.parametrize('mode', ['qa', 'debrief', 'review'])
+def test_plan_explains_authorization_attestation_and_reset(tmp_path, mode):
+    result = subprocess.run(['bash', str(SKILL / 'scripts/default.sh'), 'plan',
+        '/unused.mov', str(tmp_path), mode], capture_output=True, text=True, check=True)
+    assert 'unless a lead-authorized ceiling is recorded' in result.stdout
+    assert 'attestation the script cannot verify' in result.stdout
+    assert "brief quotes the lead's explicit dollar amount" in result.stdout
+    assert '--authorized-by naming that lead' in result.stdout
+    assert 'Re-plan clears authorization' in result.stdout
+    assert 'AFTER default.sh plan' in result.stdout

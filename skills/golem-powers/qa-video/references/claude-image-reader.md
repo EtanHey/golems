@@ -12,7 +12,8 @@ This changes the old hermetic startup contract: login/config is available, and t
 says so. Do not claim empty host instructions or independent startup-isolation PASS.
 
 Before reading, state the whole run's sheets × price estimate, including retries (default planning
-allowance $0.10/sheet, not a provider tariff). Script entry points stop above $5 with COST_HOLD;
+allowance $0.10/sheet, not a provider tariff). Script entry points stop above $5 with COST_HOLD unless a lead-authorized ceiling is recorded
+(SKILL.md cost section);
 never evade it by splitting calls. Zero successful reads STOP with "no frames were read", no QA
 verdict. Retain the failure receipts and ask the orchestrator for readers. The batch records
 verdict_allowed:false; default.sh finalize checks minimum visual evidence before its other gates.
@@ -46,7 +47,10 @@ When an SRT is available, pass `--transcript <file.srt> --frames-tsv <frames.tsv
 
 Before any helper/delegate reading, `default.sh plan` starts visual/run.json; after extraction,
 `python3 scripts/reader-policy.py admit <workdir>` admits the whole dense/index.tsv. Above $5
-writes COST_HOLD and stops. No index yet means PENDING. For targeted debrief stills pass ALL paths.
+writes COST_HOLD and stops unless a lead-authorized ceiling is recorded (SKILL.md cost section).
+The flags record an attestation the script cannot verify. Pass --authorized-usd only when the brief
+quotes the lead's explicit dollar amount, with --authorized-by naming that lead; otherwise hold.
+Re-plan clears the authorization; record it after default.sh plan. No index yet means PENDING. For targeted debrief stills pass ALL paths.
 Pass `--admission <workdir>/visual/cost-admission.json` to direct helpers and batch delegates.
 A missing/held/stale admission or changed/unlisted image is refused before provider launch.
 Receipts and summaries carry the run ID, so byte-identical prior-run images cannot earn evidence.
