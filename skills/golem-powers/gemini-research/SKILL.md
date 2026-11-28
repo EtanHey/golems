@@ -18,6 +18,23 @@ read the same Docs by folder, title and link; that does not establish Deep Resea
 access. Three subsequent runs used attached files with Drive off and passed the
 author-held answer key (PR 1267).
 
+Measured 2026-11-26, qa-video R01: the hand-off carried no probe and named 5 `.md`
+files, but the prepared files had already been renamed to `.txt` at 06:00 IST (same
+sha256 as the manifest's `.md` hashes), before Etan fired the run at about 06:53.
+With those `.txt` files attached and Drive off, Gemini's first answer was still the
+admission table with all 5 `readable: no` ("not supplied in execution context") plus
+MISSING FILES. Re-attaching the same 5 files in the same chat with "now?" produced
+the plan. File type was not the fix; a second attach in the same chat was. Harvest
+check: pending. The owner hand-off block below exists because of this run.
+
+Measured 2026-11-26, qa-video R01 harvest: `--harvest-check` FAILED on format, not
+reading. All 5 first lines matched, but 3 answers were the key value plus text sitting
+verbatim beside it in the grounding cell (key `985.926 s`, cell and answer
+`985.926 s (+85.926 s over deadline)`). orc overrode admission for this run (format, not
+fabrication; evidence: skill-creator `docs.local/plan/2026-11-25-api-key-evals/R01-harvest/BLOCKED.md`).
+Fix: whole-cell key answers, a copy-only-the-answer instruction, and the
+`ADMISSION_KEY_PART` emit check below; the harvest checker was not loosened.
+
 ## Grounding prep — your FIRST action, before any search or draft
 
 Done condition: no research prompt leaves this skill until ONE of these is true:
@@ -39,15 +56,65 @@ Done condition: no research prompt leaves this skill until ONE of these is true:
    step 1, write the exact web-only line and separate reason,
    and go straight to the emit gate below. The grounding and START/EDIT gates
    still apply.
-3. Project-grounded: name the prepared folder and files to attach in the hand-off;
-   the owner attaches them when he starts the run with Drive source off.
+3. Project-grounded: emit the owner hand-off block below, filled in; the owner
+   attaches the files when he starts the run with Drive source off.
    Draft the prompt from the receipt's exact file names. While
    preparation runs or is blocked, tell Etan the prompt follows the receipt; never
    emit it before.
 
-Include one line in the hand-off: "Prepared folder: <folder>; files to attach: <exact file names>;
-attach this prepared set when starting the run, with Drive source off." Preparation is the agent's job; do not emit a prompt that
-asks Etan to collect files.
+Preparation is the agent's job; do not emit a prompt that asks Etan to collect files.
+
+## Owner hand-off block — emit it, filled in, in this order
+
+This block is the default hand-off for every project-grounded run (attach route); the
+optional Drive route uses its own block below. Etan fires every step (fire = Etan);
+you write the probe text and you judge GO. Fill every `<...>`; keep the order and wording.
+You may put the researcher text inline in the hand-off instead of a path; Deep Research cannot open a local path.
+
+```text
+Prepared folder: <absolute folder path>
+Files to attach (<N>): <exact file name 1>, <exact file name 2>, ...
+1. Open a NEW Gemini Deep Research chat. Turn the Drive source OFF.
+2. Attach the <N> files above FIRST. Wait until all <N> file chips show. Type nothing yet.
+3. Paste this probe and send it:
+   <probe text, below>
+4. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
+5. Only after <author seat> replies GO: open <path to R{NN}-research.md>, copy its full text, and paste that text (not the path) in the SAME chat.
+6. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
+If <author seat> replies NO-GO, or a later read-check row says a file is not readable:
+- Do not paste the prompt (if it was already pasted, that run's answer is discarded).
+- First, in the SAME chat: attach the same files again, wait for every chip, and send the probe again.
+- Still NO-GO: open a NEW chat, Drive OFF, attach the files first, wait for every chip, and send the probe again.
+- Still NO-GO: <author seat> sends a NEW hand-off block (untested fallback: other file type); follow that one.
+```
+
+Probe text (one per hand-off, naming every file; never put the key's lines in it):
+
+```text
+Before anything else: for each attached file below, reply only with a table
+`file | first line`, copying the file's exact first line character for character.
+If you cannot open a file, write UNREADABLE in its row. Do not research, summarise or plan.
+- <exact file name 1>
+- <exact file name 2>
+```
+
+**GO rule:** compare each returned first line with that file's `first_line` in the
+private `admission-key` (exact string, outer whitespace trimmed). GO only when every
+named file has exactly one row and every line matches. Any UNREADABLE, missing,
+extra or mismatched row is NO-GO. Keep the probe answer and your comparison as the
+probe receipt, outside the researcher prompt. The probe does not replace the real
+run's admission table or the harvest check.
+
+**Recovery (probe or admission row not readable):**
+Order follows the R01 evidence: a second attach in the same chat is what worked; file type did not.
+1. Do not paste the researcher prompt; if it was already pasted, discard that run's answer unread.
+2. Re-attach the same files in the SAME chat, wait for every chip, and send the probe again.
+3. Still NO-GO: a NEW chat, Drive off, the same files attached first, the probe again.
+4. Still NO-GO, **untested fallback** (R01 failed its first attach with `.txt` too, so this is not known to help): switch the file type. YOU (the author) re-prepare; the owner never renames anything. Replace each file in the prepared folder with a copy of the same content and unique stem in the other type (for example `R01-01-<name>.md` → `R01-01-<name>.txt`). Then update every exact name to the new name: the `# Grounding` list and admission-question table, the private `admission-key` `document` fields, and the manifest. Re-run `prompt-preflight.mjs --emit --attached <prepared folder>` (it fails until folder, grounding and key name the same files), and send a new hand-off block with the new names, the new probe and the new prompt path.
+5. A run whose files became readable only after a re-attach (same chat or new) counts only if its admission table later passes `--harvest-check` against the private key. Otherwise it is a fabricated read: discard it.
+
+**Web-only research has no files:** its hand-off has no attach, probe or GO steps. Open a new
+Deep Research chat, paste the emitted prompt, and send the plan back for START / EDIT.
 
 ### Optional Drive route — exact titles and a probe first
 
@@ -56,19 +123,33 @@ whole Drive, with no duplicate or look-alike titles. Name each document by its
 exact title in the prompt, never by folder or link. Expect title search to miss
 documents; a connected source and an author-side Drive read prove no researcher access.
 
-Before the real run (for either source route), run one cheap Deep Research probe
-that asks only for each named document's first line. Compare every returned line
-against the author key, retaining the probe and comparison receipt outside the
-researcher prompt. Any missing or mismatched line blocks the real run. For Drive,
-switch to supplied files or correct the titles and repeat the probe; never fire
-the real prompt on an unverified set. The probe does not replace the real run's
-admission table or author-held answer key.
+The Drive route has its own short hand-off; nothing is attached:
+
+```text
+Drive titles (<N>, each unique across the whole Drive): "<exact title 1>", "<exact title 2>", ...
+1. Open a NEW Gemini Deep Research chat. Turn the Drive source ON. Attach nothing.
+2. Paste this probe and send it:
+   Before anything else: search Drive for each exact title below and reply only with a table
+   `title | first line`, copying the document's exact first line character for character.
+   If you cannot find or open a document, write NOT FOUND in its row. Do not research, summarise or plan.
+   - "<exact title 1>"
+   - "<exact title 2>"
+3. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
+4. Only after <author seat> replies GO: open <path to R{NN}-research.md>, copy its full text, and paste that text (not the path) in the SAME chat.
+5. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
+If <author seat> replies NO-GO: do not paste the prompt. <author seat> either fixes the titles and sends a
+new Drive hand-off, or switches to the attach route and sends the owner hand-off block above.
+```
+
+GO uses the same rule against the author key. On NO-GO, YOU fix duplicate or look-alike
+titles, or switch to the attach route (re-emit with the attach-route grounding and
+`--attached`); never fire the real prompt on an unverified set.
 
 ## Curated grounding set, admission stop, provenance
 
 - **Curated, bounded set:** agents prepare ONE folder holding exactly the curated grounding files with unique names, name that folder and the files to attach in the hand-off, and keep a provenance copy. The owner attaches the prepared set when starting the run with Drive source off (`/drive-filing` § Research grounding folder contract). The folder organizes the record; it is not a Deep Research access route. The prompt names the exact files and says to use ONLY them.
 - **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. Project-grounded runs only; web-only research keeps its own `None — web-only research` block and has no table. Any row that is not an affirmative verified read (no, blank, missing, empty, truncated, unreadable) stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
-- **Author-held answer key:** keep exact source answers and real first headings/lines in the author record's `admission-key` JSON inside `# Pre-fire checks`, never the emitted researcher text. Cover every named document and admission question. Emit refuses missing keys or verbatim answer leaks. `readable: yes` alone proves nothing: on 2026-11-13 NarrationLayer R02 with six attached grounding files invented all six answers (1.05 vs 1.5; 0.179 vs 0.484); the private key caught them. Earlier Drive-grounded runs stopped honestly with `readable: no` rows.
+- **Author-held answer key:** keep exact source answers and real first headings/lines in the author record's `admission-key` JSON inside `# Pre-fire checks`, never the emitted researcher text. Cover every named document and admission question. Each answer is a complete, self-contained table cell, line (its list or heading marker dropped), or whole value after a `label:` in its file, stored exactly as that whole text (bold and backticks dropped), never part of a longer cell. The researcher prompt says to copy only the answer, so the whole cell must be nothing but the answer: skip a cell that carries a parenthetical, note or qualifier (R01's `985.926 s (+85.926 s over deadline)`) and pick another question. Emit refuses missing keys or verbatim answer leaks; `--emit --attached` also refuses (`ADMISSION_KEY_PART`) an answer that is not a whole cell or line of its file. `--harvest-check` stays exact. `readable: yes` alone proves nothing: on 2026-11-13 NarrationLayer R02 with six attached grounding files invented all six answers (1.05 vs 1.5; 0.179 vs 0.484); the private key caught them. Earlier Drive-grounded runs stopped honestly with `readable: no` rows.
 - **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check row is not an affirmative verified read (readable: no, blank, missing, empty, truncated or unreadable), output only the read-check table and a MISSING FILES list, and stop.`
 - **Provenance:** the harvest record names the model, the settings (Drive on/off, Search on/off, mode), the prompt sha256, the grounding `manifest_sha256` and the folder's link, so the run's identity survives later consolidation. Write `unknown` only for a field you could not read.
 
@@ -87,8 +168,13 @@ Keep the curated provenance set in `Brain Drive/03_RESEARCH/Active/<project>/R{N
 Before emitting or firing, validate the author record and produce the researcher text. Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
 
 ```bash
-node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit --attached /path/to/R{NN}-grounding /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
 ```
+
+`--attached <prepared folder>` (attach route) also fails unless the folder's files
+(hidden files and `00-GROUNDING-MANIFEST.md` excluded) are exactly the documents the
+`# Grounding` list names, so a renamed file can't leave the prompt or key naming the old one.
+Omit it only for the Drive or web-only route.
 
 Keep the author record locally. Paste/send only the emitted `-research.md` text
 to Gemini Deep Research; it excludes the entire
@@ -106,7 +192,7 @@ were supplied, the probe passed, or the researcher read them: retain those recei
 and apply the admission harvest gate below.
 
 **Interaction steps:**
-1. Paste prompt → get research plan
+1. Etan runs the owner hand-off block (new chat, attach first, probe, GO), then pastes the prompt → research plan
 2. **Return the generated plan to the prompt author** for an explicit
    `START` / `EDIT` verdict before firing the research. Do not click Start
    Research on your own plan interpretation.

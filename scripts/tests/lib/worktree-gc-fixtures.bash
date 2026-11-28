@@ -3,9 +3,12 @@ setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd -P)"
   export GC_ENV_SCRUB="$REPO_ROOT/scripts/lib/worktree-git-env.sh"
   source "$GC_ENV_SCRUB"
-  fixture_parent="$HOME/.local/state/golems/gc-fixtures"
+  fixture_parent="${GC_FIXTURE_PARENT:-$HOME/.local/state/golems/gc-fixtures}"
   mkdir -p "$fixture_parent"
-  if git -C "$fixture_parent" rev-parse --show-toplevel >/dev/null 2>&1; then
+  if [[ -n "${GC_FIXTURE_PARENT:-}" ]]; then
+    fixture_parent="$(cd "$fixture_parent" && pwd -P)"
+    [[ "$fixture_parent" == "$REPO_ROOT/docs.local/"* ]] || return 1
+  elif git -C "$fixture_parent" rev-parse --show-toplevel >/dev/null 2>&1; then
     echo "Refusing fixture parent inside a repository" >&2; return 1
   fi
   TEST_ROOT="$(mktemp -d "$fixture_parent/test.XXXXXXXX")"
@@ -21,6 +24,7 @@ setup() {
   : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GOLEMS_WORKTREE_GC_LOCK="$TEST_ROOT/gc.lock"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
+  export GC_FIXTURE_AGE="$BATS_TEST_DIRNAME/lib/worktree-gc-age-fixtures.py"
   export WORKTREE_GC="$TEST_ROOT/contained-gc"
   cat > "$WORKTREE_GC" <<'GUARD'
 #!/usr/bin/env bash
@@ -44,6 +48,9 @@ if [[ -n "$candidate" ]]; then
 else
   [[ "$HOME" == "$GC_FIXTURE_ROOT/"* ]] || { echo "CONTAINMENT refused default HOME" >&2; exit 97; }
 fi
+# Fixture candidates are over an hour old unless a test asks for the true
+# minutes-old state (GC_FIXTURE_FRESH=1, test-worktree-gc-fresh.bats).
+[[ "${GC_FIXTURE_FRESH:-0}" == 1 ]] || python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT"
 exec "$GC_SOURCE" ${args[@]+"${args[@]}"}
 GUARD
   chmod +x "$WORKTREE_GC"
@@ -62,7 +69,12 @@ NIGHTLY
 }
 
 teardown() {
-  case "$TEST_ROOT" in "$fixture_parent"/test.*) rm -rf "$TEST_ROOT" ;; *) return 1 ;; esac
+  python3 - "$fixture_parent" "$TEST_ROOT" <<'CLEANUP'
+import pathlib, shutil, sys
+parent, root = map(pathlib.Path, sys.argv[1:])
+assert root.parent == parent and root.name.startswith("test.") and not root.is_symlink()
+shutil.rmtree(root)
+CLEANUP
 }
 
 make_fixture_repo() {

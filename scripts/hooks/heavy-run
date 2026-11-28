@@ -4,4 +4,4 @@ import os
 from pathlib import Path
 import sys
 helper = Path(__file__).resolve().with_name('heavy-suite.py')
-os.execv(sys.executable, [sys.executable, str(helper), '--lane-slots', '--limit-gb', '8', '--kill-grace-seconds', '5', *sys.argv[1:]])
+os.execv(sys.executable, [sys.executable, '-B', str(helper), '--lane-slots', '--limit-gb', '8', '--kill-grace-seconds', '5', *sys.argv[1:]])

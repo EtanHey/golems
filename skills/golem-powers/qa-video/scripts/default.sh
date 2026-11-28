@@ -19,9 +19,9 @@ if [ "${1:-}" = "plan" ]; then
   MUST_READ="${5:-}"
   [ -z "$MUST_READ" ] || [ "$MUST_READ" = --must-read ] || { echo 'plan: expected --must-read' >&2; exit 2; }
   case "$MODE" in qa|debrief|review) ;; *) echo "plan: mode must be qa, debrief or review (gems: Agent(video-gems))" >&2; exit 2;; esac
+  JUDGE_MODEL="$(python3 "$SCRIPTS/model-role.py" claude.judgment)"
+  READER_MODEL="$(python3 "$SCRIPTS/model-role.py" claude.subagent.cheap)"
   python3 "$SCRIPTS/reader-policy.py" plan "$WORKDIR"
-  JUDGE_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')"
-  READER_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.subagent.cheap --field model)"
   if [ "$MODE" = qa ] || [ "$MUST_READ" = --must-read ]; then
     mkdir -p "$WORKDIR"
     touch "$WORKDIR/.qa-mode"

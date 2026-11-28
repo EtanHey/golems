@@ -182,8 +182,9 @@ class LaneTests(unittest.TestCase):
             if child.poll() is None: child.terminate(); self.finish(child)
 
     def test_nested_suite_reuses_lane(self):
+        helper = str(HOOKS / 'heavy-suite.py')
         source=(f'import subprocess,sys; from pathlib import Path; '
-            f'r=subprocess.run([sys.executable,{str(HOOKS/'heavy-suite.py')!r},"--",sys.executable,"-c","pass"]); '
+            f'r=subprocess.run([sys.executable,{helper!r},"--",sys.executable,"-c","pass"]); '
             'assert r.returncode==0; assert not list((Path.home()/".local/state/golems").glob("*lock"))')
         result,_,err=self.finish(self.launch(source))
         self.assertEqual(result,0,err)
