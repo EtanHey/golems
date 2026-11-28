@@ -72,7 +72,7 @@ def judge_bash(command, cwd, secrets, home):
 
 def judge_read(path, cwd, secrets):
     absolute = os.path.normpath(os.path.join(cwd, os.path.expanduser(path)))
-    if secrets.is_secret(absolute):
+    if secrets.is_secret(absolute, assume_exists=True):
         return f"it would print a file that holds a secret ({absolute})"
     return None
 
@@ -88,7 +88,7 @@ def judge_grep(tool_input, cwd, secrets, home):
     if not isinstance(path, str):
         raise ValueError("Grep path must be a string")
     absolute = os.path.normpath(os.path.join(cwd, os.path.expanduser(path)))
-    if secrets.is_secret(absolute):
+    if secrets.is_secret(absolute, assume_exists=True):
         return f"it would print lines of a file that holds a secret ({absolute})"
     if secret_shell._search_hits_root(ctx, absolute):
         return secret_shell.REASON_SEARCH.format(path=absolute)

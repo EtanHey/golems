@@ -467,7 +467,7 @@ def test_a_lookalike_reader_is_not_exempt(world):
     ("~/.codex/auth.json", "deny"), (".env", "deny"), ("~/.claude/settings.json", "deny"),
     ("../Shared/t3-eval-homes/claude-eval/bin/settings.json", "deny"),
     ("auth.json.bak-2026-11-17", "deny"),
-    (".ENV", "deny"), ("AUTH.JSON.BAK-2026-11-17", "deny"), ("~/.CODEX/Auth.json", "deny"),
+    (".ENV", "deny"), ("not-created/.ENV", "deny"), ("not-created/AUTH.JSON.BAK-2026-11-17", "deny"), ("AUTH.JSON.BAK-2026-11-17", "deny"), ("~/.CODEX/Auth.json", "deny"),
     ("README.md", "allow"), (".env.example", "allow"), ("settings.json", "allow"),
     ("~/.config/tokenlayer/usage.json", "allow"),
 ])
@@ -480,6 +480,7 @@ def test_read_tool(world, path, verdict):
 @pytest.mark.parametrize("tool_input,verdict", [
     ({"pattern": "KEY", "path": ".env", "output_mode": "content"}, "deny"),
     ({"pattern": "TOKEN", "path": ".ENV", "output_mode": "content", "-A": 1}, "deny"),
+    ({"pattern": "KEY", "path": "not-created/.ENV", "output_mode": "content"}, "deny"),
     ({"pattern": "KEY", "glob": "*.env", "output_mode": "content"}, "deny"),
     ({"pattern": "env", "glob": "**/settings*.json", "output_mode": "content"}, "deny"),
     ({"pattern": "x", "path": "~/.cli-proxy-api", "output_mode": "content"}, "deny"),

@@ -1,6 +1,6 @@
 ---
 name: secret-read-guard
-description: Refuse tool calls that would print a secret file, helper output, keychain password or environment; masked reader instead.
+description: Refuse tool calls that would print a secret file, helper output, keychain or environment; use masked reader.
 ---
 
 # Secret read guard
