@@ -63,24 +63,83 @@ test('grace accepts only a valid immediate predecessor within 120 minutes', () =
 
 
 
-test('real CLI exempts unguarded PR before API access and fails closed on a guarded PR', () => {
+// Real git history; only GitHub (gh) is stubbed. P then G are guarded master merges; the PR branches off G.
+function freshnessFixture() {
   const cwd = mkdtempSync(resolve('docs.local/l3-tests/scope-'));
-  const git = (...args) => { const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...cleanEnv, GIT_AUTHOR_NAME: 'fixture', GIT_AUTHOR_EMAIL: 'fixture@localhost', GIT_COMMITTER_NAME: 'fixture', GIT_COMMITTER_EMAIL: 'fixture@localhost' } }); expect(r.status).toBe(0); return r.stdout.trim(); };
+  const env = { ...cleanEnv, GIT_AUTHOR_NAME: 'fixture', GIT_AUTHOR_EMAIL: 'fixture@localhost', GIT_COMMITTER_NAME: 'fixture', GIT_COMMITTER_EMAIL: 'fixture@localhost' };
+  const git = (...args) => { const r = spawnSync('git', args, { cwd, encoding: 'utf8', env }); expect(r.status).toBe(0); return r.stdout.trim(); };
+  const commit = (file, body, message) => { mkdirSync(join(cwd, file, '..'), { recursive: true }); writeFileSync(join(cwd, file), body); git('add', '.'); git('commit', '-qm', message); return git('rev-parse', 'HEAD'); };
+  git('init', '-q');
+  const root = commit('scripts/ratchet/rows.json', JSON.stringify({ schema: 1, rows: [{ id: 'live', metric: 'live', kind: 'real', runner: 'live',
+    direction: 'pass', ceiling: true, bug_sha: sha, fix_sha: sha, command: 'false' }] }), 'rows');
+  const prior = commit('scripts/hooks/a.py', 'p', 'guarded P');
+  const guarded = commit('scripts/hooks/b.py', 'g', 'guarded G');
+  git('update-ref', 'refs/remotes/origin/master', guarded);
+  const unguardedHead = commit('README.md', 'docs', 'non-guarded PR');
+  git('checkout', '-q', '--detach', guarded);
+  const guardedHead = commit('scripts/hooks/c.py', 'pr', 'guarded PR');
+  const bin = join(cwd, '.bin'); mkdirSync(bin);
+  writeFileSync(join(bin, 'gh'), `#!/usr/bin/env node
+const a = process.argv.slice(2), map = JSON.parse(process.env.FIXTURE_GH);
+if (a[0] !== 'api' || a[1] !== '--paginate' || a[2] !== '--slurp' || !(a[3] in map)) process.exit(2);
+console.log(JSON.stringify([map[a[3]]]));
+`, { mode: 0o755 });
+  const script = resolve(import.meta.dir, '../ratchet/live-freshness.mjs');
+  const receipt = head => [{ user: { login: 'EtanHey' }, body: `<!-- ratchet-table: golems-ratchet-live -->\n<!-- ratchet-verdict: ${JSON.stringify({ head, ok: true, real_pass: 1, real_total: 1, bootstrap: false })} -->` }];
+  // ageMin: minutes since G merged. receiptOnG: G's PR carries its own passing receipt. P's PR always does.
+  const run = ({ scope, ageMin, receiptOnG = false }) => {
+    const pull = (number, merge, at) => [{ number, merged_at: new Date(at).toISOString(), base: { ref: 'master' }, merge_commit_sha: merge }];
+    const at = Date.now() - ageMin * 60000;
+    const gh = { [`repos/EtanHey/golems/commits/${guarded}/pulls`]: pull(42, guarded, at), [`repos/EtanHey/golems/issues/42/comments`]: receiptOnG ? receipt(guarded) : [],
+      [`repos/EtanHey/golems/commits/${prior}/pulls`]: pull(41, prior, at - 60000), [`repos/EtanHey/golems/issues/41/comments`]: receipt(prior) };
+    const prEnv = scope ? { RATCHET_PR_BASE: guarded, RATCHET_PR_HEAD: scope === 'guarded' ? guardedHead : unguardedHead } : {};
+    const r = spawnSync('node', [script], { cwd, encoding: 'utf8', env: { ...cleanEnv, PATH: `${bin}:${cleanEnv.PATH}`, FIXTURE_GH: JSON.stringify(gh), ...prEnv } });
+    return { status: r.status, out: r.stdout + r.stderr };
+  };
+  return { cwd, root, run, done: () => rmSync(cwd, { recursive: true, force: true }) };
+}
+
+test('PR scope gets no grace: a guarded merge 5 min old without its receipt blocks every PR (#1357)', () => {
+  const f = freshnessFixture();
   try {
-    git('init', '-q'); writeFileSync(join(cwd, 'README.md'), 'base'); git('add', '.'); git('commit', '-qm', 'base');
-    const base = git('rev-parse', 'HEAD');
-    writeFileSync(join(cwd, 'README.md'), 'unguarded'); git('add', '.'); git('commit', '-qm', 'docs');
-    const script = resolve(import.meta.dir, '../ratchet/live-freshness.mjs');
-    const run = head => spawnSync('node', [script], { cwd, encoding: 'utf8', env: { ...cleanEnv, RATCHET_PR_BASE: base, RATCHET_PR_HEAD: head } });
-    const exempt = run(git('rev-parse', 'HEAD'));
-    expect(exempt.status).toBe(0); expect(exempt.stdout).toContain('non-guarded PR exempt');
-    mkdirSync(join(cwd, 'scripts/hooks'), { recursive: true }); writeFileSync(join(cwd, 'scripts/hooks/test.py'), 'pass'); git('add', '.'); git('commit', '-qm', 'guarded');
-    const failed = run(git('rev-parse', 'HEAD'));
-    expect(failed.status).toBe(1);
-    expect(failed.stderr).toContain('one command: ' + postMergeCommand('$RATCHET_GUARDED_MERGED_PR'));
-    expect(failed.stderr).toContain('or manually: ');
-    expect(run('unknown').status).toBe(1);
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
+    const graced = f.run({ scope: 'guarded', ageMin: 5 });
+    expect(graced.out).not.toContain('PASS (grace)');
+    expect(graced.status).toBe(1);
+    expect(graced.out).toContain('PR scope: no grace, nothing merges until PR #42');
+    expect(graced.out).toContain('post-merge-live.sh --merged-pr 42');
+    expect(f.run({ scope: 'guarded', ageMin: 5, receiptOnG: true }).status).toBe(0);
+  } finally { f.done(); }
+});
+
+test('PR scope has no non-guarded exemption: the latest guarded merge needs its receipt first', () => {
+  const f = freshnessFixture();
+  try {
+    const exempt = f.run({ scope: 'unguarded', ageMin: 300 });
+    expect(exempt.out).not.toContain('non-guarded PR exempt');
+    expect(exempt.status).toBe(1);
+    expect(exempt.out).toContain('missing or stale live receipt');
+    expect(f.run({ scope: 'unguarded', ageMin: 5 }).status).toBe(1);
+    expect(f.run({ scope: 'unguarded', ageMin: 300, receiptOnG: true }).status).toBe(0);
+  } finally { f.done(); }
+});
+
+test('without PR scope (master push, hourly schedule) grace is unchanged: PASS inside 120 min, FAIL after', () => {
+  const f = freshnessFixture();
+  try {
+    const master = f.run({ scope: null, ageMin: 5 });
+    expect(master.status).toBe(0); expect(master.out).toContain('PASS (grace)');
+    expect(f.run({ scope: null, ageMin: 180 }).status).toBe(1);
+    expect(f.run({ scope: null, ageMin: 180, receiptOnG: true }).status).toBe(0);
+  } finally { f.done(); }
+});
+
+test('incomplete PR scope fails closed', () => {
+  const f = freshnessFixture();
+  try {
+    const r = spawnSync('node', [resolve(import.meta.dir, '../ratchet/live-freshness.mjs')], { cwd: f.cwd, encoding: 'utf8', env: { ...cleanEnv, RATCHET_PR_BASE: f.root } });
+    expect(r.status).toBe(1); expect(r.stderr).toContain('incomplete PR scope');
+    expect(r.stderr).toContain('one command: ' + postMergeCommand('$RATCHET_GUARDED_MERGED_PR'));
+  } finally { f.done(); }
 });
 
 test('BASE workflow authenticates its consumer, preserves BASE identity and PR scope, and fails on absent/stale receipts', () => {
@@ -116,10 +175,6 @@ if (a[0] === 'show' && a[1] === e.FIXTURE_BASE + ':scripts/ratchet/rows.json') {
   process.stdout.write(require('fs').readFileSync(e.RUNNER_TEMP + '/fixture-rows.json')); process.exit(0);
 }
 if (a[0] === 'worktree' && a[1] === 'add' && a[2] === '--detach' && a[3] === e.RUNNER_TEMP + '/base' && a[4] === e.FIXTURE_BASE) process.exit(0);
-if (a[0] === 'diff' && a[1] === '--name-only' && a.at(-1) === e.FIXTURE_BASE + '...' + e.FIXTURE_HEAD) {
-  const f = e.FIXTURE_UNGUARDED ? 'README.md' : 'scripts/hooks/guard.py';
-  if (a.includes('-z')) process.stdout.write(f + '\\0'); else console.log(f); process.exit(0);
-}
 if (a[0] === 'log' && a.includes('origin/master')) { console.log(e.FIXTURE_GUARDED); process.exit(0); }
 if (a[0] === 'show' && a[1] === 'origin/master:scripts/ratchet/rows.json') {
   console.log(JSON.stringify({schema: 1, rows: [{id:'live', metric:'live', kind:'real', runner:'live', direction:'pass', ceiling:true, bug_sha:e.FIXTURE_BASE, fix_sha:e.FIXTURE_GUARDED, command:'false'}]})); process.exit(0);
@@ -130,7 +185,7 @@ fail();
     writeFileSync(join(bin, 'bun'), '#!/bin/sh\n[ "$1" = install ] && [ "$PWD" = "$RUNNER_TEMP/base" ]\n', { mode: 0o755 });
     writeFileSync(join(bin, 'gh'), `#!/usr/bin/env node
 const a = process.argv.slice(2), e = process.env;
-if (!e.GH_TOKEN || e.FIXTURE_UNGUARDED || a[0] !== 'api' || a[1] !== '--paginate' || a[2] !== '--slurp') process.exit(1);
+if (!e.GH_TOKEN || a[0] !== 'api' || a[1] !== '--paginate' || a[2] !== '--slurp') process.exit(1);
 if (a[3] === 'repos/EtanHey/golems/commits/' + e.FIXTURE_GUARDED + '/pulls') {
   console.log(JSON.stringify([[{number:42, merged_at:'2026-10-07T00:00:00Z', base:{ref:'master'}, merge_commit_sha:e.FIXTURE_GUARDED}]]));
 } else if (a[3] === 'repos/EtanHey/golems/issues/42/comments') {
@@ -166,9 +221,8 @@ if (a[3] === 'repos/EtanHey/golems/commits/' + e.FIXTURE_GUARDED + '/pulls') {
       expect(output).toContain('missing or stale live receipt');
       expect(evaluate({ rows, baseRows: rows, results, head: base, runner: 'ci' }).ok).toBe(false);
     }
-    const unguarded = run('missing', { FIXTURE_UNGUARDED: '1' });
-    expect(unguarded.results.results['live-tier-freshness'].value).toBe(true);
-    expect(unguarded.output).toContain('non-guarded PR exempt');
+    // PR scope reaches the receipt check without asking whether the PR is guarded (no exemption).
+    expect(run('fresh').output).not.toContain('non-guarded PR exempt');
     // Token stays in this step, using the existing permissions and event.
     expect(step.if).toBe("github.event_name == 'pull_request'");
     expect(step.env.GH_TOKEN).toBe('${{ github.token }}');

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 // CI watches the lead-run tier: latest guarded merge on master needs its live PASS receipt.
+// AIDEV-NOTE: PR scope (RATCHET_PR_BASE/RATCHET_PR_HEAD, the PR-time ratchet row) is the merge gate: no non-guarded
+// exemption and no grace, so no PR merges while the latest guarded master merge lacks its receipt (golems #1348/#1357,
+// docs/architecture/merge-gate.md). Grace stays only for master pushes and the hourly alert.
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkVerdict } from './check-comment.mjs';
 import { parseRows, findSticky, readVerdict, expectedReporting } from './table.mjs';
 import { guardedPrefixes, manifestsAt } from './guarded-set.mjs';
 export const GRACE_MINUTES = 120;
-export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead], expectedReportOnly = [], now = Date.now(), prior }) {
+export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead], expectedReportOnly = [], now = Date.now(), prior, prScope = false }) {
   const pr = pulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === guardedHead);
   if (!pr) return { ok: false, reason: 'latest guarded commit has no merged master PR' };
   if (!Number.isSafeInteger(expectedReal) || expectedReal < 1) return { ok: false, reason: 'master has no real live rows' };
@@ -18,6 +21,7 @@ export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal,
   };
   const result = validate(comments, allowedHeads);
   if (result.ok) return result;
+  if (prScope) return { ...result, reason: `${result.reason}; PR scope: no grace, nothing merges until PR #${pr.number}'s receipt passes: ${postMergeCommand(pr.number)}` };
   const age = (now - Date.parse(pr.merged_at)) / 60000;
   if (prior && age >= 0 && age <= GRACE_MINUTES
     && prior.pulls.some(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === prior.guardedHead)) {
@@ -42,12 +46,9 @@ export function main() {
   let mergedPR;
   const recovery = () => console.error(`Lead: one command: ${postMergeCommand(mergedPR ?? '$RATCHET_GUARDED_MERGED_PR')}\nor manually: ${recoveryCommand(mergedPR ?? '$RATCHET_GUARDED_MERGED_PR', process.env.RATCHET_LEASE_PR)}`);
   try {
-    if (process.env.RATCHET_PR_BASE || process.env.RATCHET_PR_HEAD) {
-      if (!process.env.RATCHET_PR_BASE || !process.env.RATCHET_PR_HEAD) throw new Error('incomplete PR scope');
-      const scope = spawnSync('bash', [fileURLToPath(new URL('./guarded-paths.sh', import.meta.url)), process.env.RATCHET_PR_BASE, process.env.RATCHET_PR_HEAD], { encoding: 'utf8' });
-      if (scope.status === 1) { console.log('live-tier freshness PASS: non-guarded PR exempt'); return 0; }
-      if (scope.status !== 0) throw new Error('cannot determine guarded PR paths');
-    }
+    // PR scope gates every PR, guarded or not, with no grace: the merge gate. Master pushes and schedules keep grace.
+    const prScope = Boolean(process.env.RATCHET_PR_BASE || process.env.RATCHET_PR_HEAD);
+    if (prScope && (!process.env.RATCHET_PR_BASE || !process.env.RATCHET_PR_HEAD)) throw new Error('incomplete PR scope');
     // The same guarded set as guarded-paths.sh (guarded-set.mjs: static + hook-loaded dirs, from master's manifest).
     // Candidate-only changes do not invalidate live.
     const guardedAt = ref => run('git', ['log', '--first-parent', '-1', '--format=%H', ref, '--',
@@ -63,9 +64,9 @@ export function main() {
     mergedPR = pr?.number;
     const comments = pr ? api(`issues/${pr.number}/comments`) : [];
     const allowedHeads = run('git', ['rev-list', '--first-parent', 'origin/master', `^${guardedHead}^`]).split('\n');
-    let result = checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads, expectedReportOnly: expectedReporting(rows, 'live') });
+    let result = checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads, expectedReportOnly: expectedReporting(rows, 'live'), prScope });
     const age = (Date.now() - Date.parse(pr?.merged_at)) / 60000;
-    if (!result.ok && age >= 0 && age <= GRACE_MINUTES) {
+    if (!prScope && !result.ok && age >= 0 && age <= GRACE_MINUTES) {
       const previousHead = guardedAt(`${guardedHead}^1`);
       if (previousHead) {
         const previousPulls = api(`commits/${previousHead}/pulls`);
