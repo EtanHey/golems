@@ -247,7 +247,7 @@ re-mine); **synthesis is pinned last**; the run **resumes the same run on crash*
 (never restarts). Every round is a **~3-agent collaborating panel** with diverse
 lenses + intra-round cross-check — majority decides, a single-lens dissent demands
 a follow-up round; **never 1/1 micro-rounds**. **Every spawn is model-pinned**
-(gather = the appropriate Gemini gather role; bounded Claude recall/verifiers =
+(gather = `/agent-routing` § Gathering, 2026-11-27 21:09: Codex Terra low/medium; a Haiku child for pure file lookups; bounded Claude recall/verifiers =
 `claude.subagent.cheap`; judgment/synthesis = `claude.judgment`) —
 resolve models/aliases/launcher tiers with `node scripts/model-roles.mjs <role> --field <field>`
 from the golems checkout; choose effort per `/large-plan` phase and pass explicitly at dispatch.

@@ -43,7 +43,7 @@ def test_no_live_cursor_routes_across_fleet_tree():
     }
     patterns = [r'["\']?providerInstanceId["\']?:\s*["\']?cursor\b', r'bugbot run', r'@cursor @bugbot',
                 r'\bcursor(?:-|\s+)agent(?:[`"\'])?\s+--?', r'cursor_bin.*\bagent\b',
-                r'gather\s*=\s*Cursor', r'Cursor gathers', r'cursor:.*delegate_task', r'T3 Cursor child', r'read-only Cursor audit',
+                r'gather\s*=\s*Cursor', r'Cursor gathers', r'cursor:.*delegate_task', r'T3 Cursor child', r'read-only Cursor audit', r'\brun\s+Cursor\s+(?:with|to)\b',
                 r'audits → Cursor', r'Cursor miners use', r'--(?:primary-)?judges[ \t]+[a-z,]*cursor']
     errors = []
     for name in files:

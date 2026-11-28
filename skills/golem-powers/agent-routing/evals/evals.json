@@ -1,6 +1,6 @@
 {
   "skill_name": "agent-routing",
-  "description": "Eval cases for supported fleet routing: easy gathers use Antigravity Flash-high first; narrow technical builds use Codex, holistic/product builds use Claude, and Neon/Hydrogen may build under Execution capability. Cursor is retired.",
+  "description": "Eval cases for supported fleet routing: gathers/recons/audits use Codex Terra low/medium; pure file lookups use a Haiku child; narrow technical builds use Codex, holistic/product builds use Claude, and Neon/Hydrogen may build under Execution capability. Cursor is retired.",
   "effort_routing_gate": {
     "category": "model-effort",
     "total_cases": 9,
@@ -11,10 +11,10 @@
     {
       "id": 1,
       "prompt": "I need to understand what's in the BrainLayer SQLite database -- how many chunks, what tags exist, whether the FTS5 index is in sync. Can you run some queries to check?",
-      "expected_output": "Should route this to a supported gatherer via cmux, NOT run sqlite3 queries itself. This is a read-only data-gathering task.",
+      "expected_output": "Should route this to a gatherer routed by the 2026-11-27 ruling via cmux, NOT run sqlite3 queries itself. This is a read-only data-gathering task. Pure file lookups use a Haiku child.",
       "assertions": [
         {
-          "text": "Routes SQL querying to Antigravity Flash-high first; if unavailable, uses a supported gather fallback under the SSOT.",
+          "text": "Routes SQL querying to Codex Terra low/medium; pure file lookups use a Haiku child; model unavailability is reported to the lead.",
           "type": "behavioral"
         },
         {
@@ -22,7 +22,7 @@
           "type": "negative"
         },
         {
-          "text": "Includes READ-ONLY in the supported gatherer brief; no database modifications.",
+          "text": "Includes READ-ONLY in the gatherer routed by the 2026-11-27 ruling brief; no database modifications.",
           "type": "behavioral"
         },
         {
@@ -57,14 +57,14 @@
     {
       "id": 3,
       "prompt": "We're starting a new sprint collab. brainClaude will investigate BrainLayer search quality issues, and we need code fixes applied. Write the collab kickoff.",
-      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Antigravity Flash-high for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) for code fixes, the other vendor for review, and brainClaude for coordination.",
+      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Codex Terra at low or medium for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) for code fixes, the other vendor for review, and brainClaude for coordination. Pure file lookups use a Haiku child.",
       "assertions": [
         {
           "text": "Includes an Agent Routing table or section in the collab",
           "type": "behavioral"
         },
         {
-          "text": "Assigns data-gathering/investigation tasks to Antigravity Flash-high (not the coordinating Claude)",
+          "text": "Assigns data-gathering/investigation tasks to Codex Terra at low or medium (not the coordinating Claude) Pure file lookups use a Haiku child.",
           "type": "behavioral"
         },
         {
@@ -111,14 +111,14 @@
     {
       "id": 5,
       "prompt": "We need to audit all 53 skill files in golem-powers/ to check which ones have evals and which don't. Then for any skills missing evals, we need to create eval cases. How should we set this up?",
-      "expected_output": "Should split into two phases: (1) Antigravity Flash-high scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
+      "expected_output": "Should split into two phases: (1) Codex Terra at low or medium scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) creates missing eval files (implementation). Claude coordinates; the other vendor reviews. Pure file lookups use a Haiku child.",
       "assertions": [
         {
           "text": "Splits the task into a gathering phase (audit) and implementation phase (create evals)",
           "type": "behavioral"
         },
         {
-          "text": "Routes the audit/scan phase to Antigravity Flash-high (read-only file listing and checking)",
+          "text": "Routes the audit/scan phase to Codex Terra at low or medium (read-only file listing and checking) Pure file lookups use a Haiku child.",
           "type": "behavioral"
         },
         {
@@ -138,10 +138,10 @@
     {
       "id": 6,
       "prompt": "The Cursor worker on surface:68 seems to have crashed -- it's not responding to read_screen. The Claude agent hasn't noticed and is still waiting for results. What do I do?",
-      "expected_output": "Should immediately replace the retired Cursor lane with Antigravity Flash-high or the supported gather fallback on a new surface, resend the original task, and notify the Claude agent. Don't wait for the Claude to discover the crash on its own.",
+      "expected_output": "Should immediately replace the retired Cursor lane with Codex Terra at low or medium or the supported gather fallback on a new surface, resend the original task, and notify the Claude agent. Don't wait for the Claude to discover the crash on its own. Pure file lookups use a Haiku child.",
       "assertions": [
         {
-          "text": "Takes immediate action to respawn the crashed supported gatherer",
+          "text": "Takes immediate action to respawn the crashed gatherer routed by the 2026-11-27 ruling",
           "type": "behavioral"
         },
         {
@@ -149,7 +149,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Resends the original task to the new supported gatherer",
+          "text": "Resends the original task to the new gatherer routed by the 2026-11-27 ruling",
           "type": "behavioral"
         },
         {
@@ -165,10 +165,10 @@
     {
       "id": 7,
       "prompt": "I need to scan all Python files in ~/Gits/brainlayer/ for any function that has a docstring but no implementation body (stubs). Can you grep for that pattern?",
-      "expected_output": "Should recognize this as a read-only data-gathering task and route to Antigravity Flash-high. Should NOT run grep itself, as this is mechanical file scanning that burns Claude context.",
+      "expected_output": "Should recognize this as a read-only data-gathering task and route to Codex Terra at low or medium. Should NOT run grep itself, as this is mechanical file scanning that burns Claude context. Pure file lookups use a Haiku child.",
       "assertions": [
         {
-          "text": "Routes the grep/scanning task to a supported gatherer",
+          "text": "Routes the grep/scanning task to a gatherer routed by the 2026-11-27 ruling",
           "type": "behavioral"
         },
         {
@@ -176,11 +176,11 @@
           "type": "negative"
         },
         {
-          "text": "Provides the supported gatherer with the specific grep pattern or search criteria",
+          "text": "Provides the gatherer routed by the 2026-11-27 ruling with the specific grep pattern or search criteria",
           "type": "behavioral"
         },
         {
-          "text": "Specifies a report path for the supported gatherer (docs.local/ or similar).",
+          "text": "Specifies a report path for the gatherer routed by the 2026-11-27 ruling (docs.local/ or similar).",
           "type": "behavioral"
         }
       ]
@@ -188,10 +188,10 @@
     {
       "id": 8,
       "prompt": "brainClaude just finished its sprint. Looking at the collab log, it did all 5 SQL queries itself, never sent anything to its Cursor worker, and also wrote a 200-line fix directly instead of using Codex. How do we prevent this next time?",
-      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Antigravity Flash-high, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
+      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Codex Terra at low or medium, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs. Pure file lookups use a Haiku child.",
       "assertions": [
         {
-          "text": "Identifies the SQL queries as gathering work, routed to Antigravity Flash-high first under the SSOT.",
+          "text": "Identifies the SQL queries as gathering work, routed to Codex Terra at low or medium first under the SSOT. Pure file lookups use a Haiku child.",
           "type": "behavioral"
         },
         {
@@ -207,7 +207,7 @@
           "type": "negative"
         },
         {
-          "text": "References the SSOT: Antigravity Flash-high handles easy gathers; Codex handles narrow technical builds; Claude handles holistic/product work and orchestration; scoped Neon/Hydrogen builds follow Execution capability.",
+          "text": "References the SSOT: Codex Terra at low or medium handles easy gathers; Codex handles narrow technical builds; Claude handles holistic/product work and orchestration; scoped Neon/Hydrogen builds follow Execution capability. Pure file lookups use a Haiku child.",
           "type": "behavioral"
         }
       ]
@@ -246,10 +246,10 @@
     {
       "id": 10,
       "prompt": "I need to spawn a Cursor worker in the brainlayer repo to audit FTS5 sync. Give me the exact one-liner to dispatch it.",
-      "expected_output": "Reject the retired Cursor launcher. Route easy gathering to Antigravity Flash-high first; use the SSOT fallback when unavailable. Do not emit a Cursor command.",
+      "expected_output": "Reject the retired Cursor launcher. Route easy gathering to Codex Terra at low or medium first; use the SSOT fallback when unavailable. Do not emit a Cursor command. Pure file lookups use a Haiku child.",
       "assertions": [
         {
-          "text": "Rejects the retired Cursor launcher and routes the gather through /agent-routing.",
+          "text": "Rejects the retired Cursor launcher; gathers use Codex Terra low/medium and pure file lookups use a Haiku child.",
           "type": "behavioral"
         },
         {
@@ -304,14 +304,14 @@
     {
       "id": 12,
       "prompt": "Someone wrote in a collab kickoff: `cd ~/Gits/brainlayer && MCP_CONNECTION_NONBLOCKING=1 CLAUDE_CODE_NO_FLICKER=1 cursor agent \"audit X\"`. Is this correct? If not, what's the fix?",
-      "expected_output": "Flag both the verbose launcher and Cursor routing as retired. Use a supported gatherer under /agent-routing.",
+      "expected_output": "Flag both the verbose launcher and Cursor routing as retired. Use a gatherer routed by the 2026-11-27 ruling under /agent-routing. Pure file lookups use a Haiku child.",
       "assertions": [
         {
           "text": "Flags the verbose launcher form and the retired provider route.",
           "type": "behavioral"
         },
         {
-          "text": "Recommends Antigravity Flash-high for the gather, with supported SSOT fallback if unavailable.",
+          "text": "Recommends Codex Terra at low or medium for the gather, with supported SSOT fallback if unavailable. Pure file lookups use a Haiku child.",
           "type": "behavioral"
         },
         {
@@ -327,7 +327,7 @@
     {
       "id": 13,
       "prompt": "Given this recent JSONL transcript excerpt, identify any worker dispatch violations and provide the canonical replacement commands:\n\n{\"message\":{\"content\":\"cmux send --surface surface:2 \\\"cd ~/Gits/brainlayer && MCP_CONNECTION_NONBLOCKING=1 CLAUDE_CODE_NO_FLICKER=1 cursor agent \\\\\\\"audit read path\\\\\\\"\\\"\"}}\n{\"message\":{\"content\":\"cmux send --surface surface:3 \\\"brainlayerCodex --fast \\\\\\\"fix typo\\\\\\\"\\\"\"}}\n{\"message\":{\"content\":\"cmux send --surface surface:4 \\\"brainlayerCursor -s \\\\\\\"scan FTS\\\\\\\"\\\"\"}}",
-      "expected_output": "Flag both raw commands and the Cursor launcher as invalid. The Codex launcher remains supported for its implementation role.",
+      "expected_output": "Flag both raw commands and the Cursor launcher as invalid. The Codex launcher remains supported for its implementation role. Pure file lookups use a Haiku child.",
       "assertions": [
         {
           "text": "Flags the raw Cursor command and the existing Cursor launcher as retired.",
@@ -338,7 +338,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the audit to Antigravity Flash-high first, not a Cursor launcher.",
+          "text": "Routes the audit to Codex Terra at low or medium first, not a Cursor launcher. Pure file lookups use a Haiku child.",
           "type": "behavioral"
         },
         {
@@ -1070,7 +1070,7 @@
           "type": "content"
         },
         {
-          "name": "routes_to_t3_cursor_or_claude_workflow",
+          "name": "routes_to_t3_or_claude_workflow",
           "description": "Uses supported T3 child providers or Claude Workflow for independent units.",
           "type": "behavioral"
         },
@@ -1096,7 +1096,7 @@
       "root_cause_tested": "correct_gui_use — skill should NOT over-correct and avoid /multitask when it IS the right tool",
       "assertions": [
         {
-          "name": "recommends_multitask",
+          "name": "refuses_multitask",
           "description": "Refuses the retired Cursor workflow even in the GUI.",
           "type": "content"
         },
@@ -1983,10 +1983,10 @@
       "name": "codex-seats-dispatch-brief",
       "category": "codex-seats",
       "prompt": "You are a Claude lead in a T3 thread; Codex is available. Write one dispatch line (provider, model, effort, one-line why) for each child: (1) run the repo's full test suite and tabulate which tests fail; (2) a bounded off-by-one fix in a CSV parser (narrow technical work); (3) the other-vendor review of an XS, 30-line Claude-built diff; (4) a QA child that writes test cases for that parser. Then say what you record in your plan today.",
-      "expected_output": "(1) never Codex: a task that is only running tests and tabulating goes to Antigravity Flash-high first, then supported Sonnet/Haiku fallbacks when unavailable. (2) Codex Sol at medium, bounded work included (high only with one line of why; xhigh only on orc's word). (3) Codex Terra at medium for a small diff. (4) a test/QA role is never above low on any Codex model (or goes to a non-Codex seat). The plan gets the one-line daily count of turns dispatched to Codex, by purpose.",
+      "expected_output": "(1) the gather/recon/audit route is Codex Terra low/medium: a task that is only running tests and tabulating goes to Codex Terra at low or medium first, a Haiku child handles pure file lookups. (2) Codex Sol at medium, bounded work included (high only with one line of why; xhigh only on orc's word). (3) Codex Terra at medium for a small diff. (4) a test/QA role is never above low on any Codex model (or goes to a non-Codex seat). The plan gets the one-line daily count of turns dispatched to Codex, by purpose. Pure file lookups use a Haiku child.",
       "assertions": [
         {
-          "text": "Child 1 (run tests and tabulate) is not dispatched to any Codex model.",
+          "text": "Child 1 (run tests and tabulate) uses Codex Terra at low or medium under the gather/recon/audit ruling; a Haiku child handles pure file lookups.",
           "type": "behavioral"
         },
         {

@@ -442,7 +442,7 @@ Briefs that point workers at skill files MUST use the real path: skills live at
 **one line** ("Read and follow `<file>`") — the payload lives in the brief/collab
 file on disk with report path + DONE marker + green criteria. Boot prompts >1
 paragraph get CHUNKED on idle panes and wedge them. The discharge harness stays
-**engine-agnostic** (briefs on disk + one-line pointers) so Codex↔Cursor swap in
+**engine-agnostic** (briefs on disk + one-line pointers) so Codex workers swap in
 minutes. [g1:99-100 → 2026-06-06-evening.md:47-48,53-55; g2:22,31]
 
 ### 2e. Review the harness script BEFORE you launch it (NEW pre-launch gate)
@@ -526,7 +526,7 @@ Every weave checks whether context files need surgical improvement and routes it
   sessions by **prompt identity / session stem**, not repo path alone.
 - **Gemini-side artifacts** (Etan-fired in UI) are a future corpus modality — note
   in manifest when excluded from JSONL discovery.
-- **Artifact-cluster mining is first-class:** Cursor clusters with no JSONLs are a
+- **Artifact-cluster mining is first-class:** Cursor clusters (historical) with no JSONLs are a
   real corpus modality (4 clusters → 53 findings in one run), not a skip. [g1:81 → 2026-06-07.md:25]
 
 ## 3. The miner contract (per session)
