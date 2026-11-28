@@ -1,0 +1,28 @@
+{
+  "specimen": "t3-fable-inheritance-claude-eval-target",
+  "expect": "FLAG",
+  "violation": "MODELPIN_DELEGATE_UNPINNED",
+  "action_contains": "delegate_task",
+  "context": {
+    "threadId": "thread:delegated-task:fixture"
+  },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "cwd": "@WORKTREE_ROOT@",
+    "tool_name": "mcp__t3_code__delegate_task",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5-2"
+        }
+      }
+    ],
+    "tool_input": {
+      "task": "synthetic worker",
+      "target": {
+        "providerInstanceId": "claude-eval"
+      }
+    }
+  }
+}

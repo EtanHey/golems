@@ -1,6 +1,10 @@
+import { realpathSync, statSync } from "node:fs";
+import path from "node:path";
 import { recentAssistantModel } from "../lib/transcript.mjs";
 
 const RAW_SPAWN_TOOLS = new Set(["Agent", "Task", "Workflow"]);
+const T3_DELEGATE_TOOLS = new Set(["mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]);
+const FABLE_ROUTE = "start it as a T3 delegate_task child (providerInstanceId claudeAgent, model claude-fable-5-2) when Etan asked for it";
 const CMUX_SPAWN_TOOLS = new Set(["spawn_agent", "dispatch_to_agent", "new_split"]);
 const WORKER_MODEL_RE = /\b(opus|sonnet|haiku)\b/i;
 const FABLE_RE = /\bfable\b/i;
@@ -380,6 +384,25 @@ function payloadSeatId(payload, input) {
   return "";
 }
 
+// T3 supplies the thread id to Claude's process environment (ClaudeAdapterV2).
+// Use the hook process cwd, not a tool-input seat claim. Exact root paths and a
+// .git DIRECTORY exclude linked worktrees, including aliases after realpath.
+// This is a local policy check, not authentication against same-user shell code.
+function t3LeadSeat(payload, context) {
+  if (!context.threadId || context.threadId.startsWith("thread:delegated-task:")) return "";
+  try {
+    const cwd = realpathSync(context.cwd);
+    if (realpathSync(payload.cwd) !== cwd || !statSync(path.join(cwd, ".git")).isDirectory()) return "";
+    const roots = [["skill-creator", "skillcreatorLead"], ["orchestrator", "orchestrator"], ["orc", "orcClaude"]];
+    for (const [repo, seat] of roots) {
+      try {
+        if (cwd === realpathSync(path.join(context.home, "Gits", repo))) return seat;
+      } catch { /* an absent apex checkout grants nothing */ }
+    }
+  } catch { /* missing cwd or filesystem evidence grants nothing */ }
+  return "";
+}
+
 function inputCommandText(input) {
   if (!isObject(input)) return "";
   return [
@@ -431,29 +454,46 @@ export function weeklyResetPassed(payload, resetAt = WEEKLY_RESET_AT) {
   return now >= at;
 }
 
-export function detectModelPin(payload) {
+export function detectModelPin(payload, context = {}) {
   const result = emptyResult();
   if (!isObject(payload)) return result;
 
   const tool = baseName(payload.tool_name ?? payload.toolName);
   result.tool = tool;
-  if (!RAW_SPAWN_TOOLS.has(tool) && !CMUX_SPAWN_TOOLS.has(tool)) return result;
+  const t3Delegate = T3_DELEGATE_TOOLS.has(payload.tool_name ?? payload.toolName);
+  if (!RAW_SPAWN_TOOLS.has(tool) && !CMUX_SPAWN_TOOLS.has(tool) && !t3Delegate) return result;
 
   const input = payload.tool_input ?? payload.toolInput;
   if (!isObject(input)) return result;
 
   const seatModel = recentAssistantModel(payload.transcript);
-  const seatId = payloadSeatId(payload, input);
+  const seatId = t3Delegate || context.threadId ? t3LeadSeat(payload, context) : payloadSeatId(payload, input);
   // AIDEV-NOTE: Etan order 2026-07-16 ("break through that model pin gate") + recovered voice transcript
   // ("I'm totally fine with using Fable for this... if you need, just open a[ gate exception]"):
   // sessions don't always carry seat_id; by fleet economics ONLY apex seats (orc, skillcreatorLead)
   // run Fable at all, so a seat ALREADY RUNNING Fable with no seat_id is apex by inference.
   // Non-Fable unknown seats remain blocked from pinning Fable (the original protection).
-  const apexSeat = isApexSeatId(seatId) || (!seatId && isFableModel(recentAssistantModel(payload.transcript)));
+  const apexSeat = isApexSeatId(seatId) || (!t3Delegate && !context.threadId && !seatId && isFableModel(seatModel));
   result.seatModel = seatModel;
   result.seatId = seatId;
 
-  const pinnedModel = modelText(input);
+  // Only target.model is a pin on the T3 wire; alias fields are ignored by T3.
+  const pinnedModel = t3Delegate ? stringValue(input.target?.model) : modelText(input);
+  const provider = stringValue(input.target?.providerInstanceId);
+  // No dynamic provider catalog is available to this offline hook. Unknown
+  // instance aliases might use claudeAgent too, so require a pin for those.
+  const knownOtherDriver = new Set(["codex", "codex-worker", "cursor", "antigravity"]).has(provider);
+  if (t3Delegate && isFableModel(seatModel) && !pinnedModel && !knownOtherDriver) {
+    return {
+      ...result,
+      verdict: "FLAG",
+      violations: [{
+        code: "MODELPIN_DELEGATE_UNPINNED",
+        evidence: "Fable-seat delegate_task has no explicit target.model and may inherit Fable",
+        action: `pin target.model to the intended worker model; ${FABLE_ROUTE}`,
+      }],
+    };
+  }
   const cmuxTarget = cmuxFableTarget(tool, input);
   const workflowTarget = tool === "Workflow" ? workflowFablePin(input) : "";
   const fableTarget = cmuxTarget || workflowTarget || (isFableModel(pinnedModel) ? pinnedModel : "");
@@ -469,7 +509,7 @@ export function detectModelPin(payload) {
             ? "MODELPIN_CMUX_FABLE_TARGET"
             : "MODELPIN_FABLE_BELOW_APEX",
           evidence: `${tool} targets ${fableTarget} from non-apex seat ${seatId || "(unknown-seat)"}`,
-          action: "pin this spawn to model:'sonnet' for bulk work, model:'opus' for reasoning/review, or use Fable only from orchestrator/skillcreatorLead",
+          action: `use a cheaper explicit model; ask an apex lead to ${FABLE_ROUTE}`,
         },
       ],
     };
@@ -485,22 +525,22 @@ export function detectModelPin(payload) {
   // AIDEV-NOTE 2026-07-18 THIRD BURN, FINAL FORM (Etan): the fable-seat-infers-apex inference let a
   // Fable REVIEWER pin fable Agent/Task subagents (workflow block alone was insufficient — burned the
   // 5h window again). LAW, literal: FABLE IS NEVER A SUBAGENT TARGET from ANY seat. Agent/Task/Workflow
-  // fable pins are ALL blocked. Fable enters the fleet ONLY as a pane SEAT (cmux spawn / Etan's manual flip).
+  // fable pins are ALL blocked. Fable enters as a separate SEAT (cmux or owner-requested T3 delegate_task child).
   // AIDEV-NOTE 2026-09-05: until skill-creator captured this file (#50) both blocks above set a flag
   // nothing read and pushed onto an array the result never had, so they THREW and the hook's catch-all
   // allowed the spawn. They had been failing open since they landed. From this patch they are real
   // verdicts: ADVISORY until WEEKLY_RESET_AT (Etan 2026-09-05 amnesty), FLAG after.
-  if (workflowTarget || (fableTarget && !cmuxTarget)) {
+  if (workflowTarget || (fableTarget && !cmuxTarget && !t3Delegate)) {
     const finding = workflowTarget
       ? {
           code: "MODELPIN_FABLE_IN_WORKFLOW",
           evidence: `Workflow script pins ${workflowTarget} — workflows are opus-only for ALL seats (Etan law 2026-07-18; a Fable workflow burned the 5h window in 31min on 07-17, and Fable-reviewer workflows drained the weekly budget on 07-18)`,
-          action: "pin every Workflow agent() to model:'opus' (or 'sonnet' for bulk); run Fable only as a pane SEAT",
+          action: `pin every Workflow agent() to a cheaper model; ${FABLE_ROUTE}`,
         }
       : {
           code: "MODELPIN_FABLE_SUBAGENT",
           evidence: `${tool} pins ${fableTarget} as a SUBAGENT — fable is seat-class only (3rd budget burn 2026-07-18; no apex exception exists anymore)`,
-          action: "pin model:'opus' (reasoning/review) or model:'sonnet' (bulk); run Fable only as a pane seat",
+          action: `pin a cheaper subagent model; ${FABLE_ROUTE}`,
         };
     if (!weeklyResetPassed(payload)) {
       return {
@@ -530,7 +570,7 @@ export function detectModelPin(payload) {
         {
           code: "MODELPIN_AGENT_UNPINNED",
           evidence: `${tool} call from Fable seat ${seatModel} has no tool_input.model`,
-          action: "pin this spawn to model:'sonnet' for bulk work, model:'opus' for reasoning/review, or use an explicit Fable pin only from orchestrator/skillcreatorLead",
+          action: `pin this spawn to model:'sonnet' for bulk work or model:'opus' for reasoning/review; ${FABLE_ROUTE}`,
         },
       ],
     };

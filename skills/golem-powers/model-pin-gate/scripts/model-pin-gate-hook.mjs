@@ -10,6 +10,7 @@
 // stdin/transcript reads. Errors allow with a {"systemMessage":"..."} failure advisory.
 
 import { closeSync, openSync, readSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { detectModelPin } from "../src/model-pin-gate.mjs";
 
 const MAX_INPUT_BYTES = 256 * 1024;
@@ -32,7 +33,7 @@ function block(result) {
     decision: "block",
     reason: [
       `MODEL-PIN-GATE (the gate that stops Fable being picked by accident) caught ${codes}.`,
-      "Pin this spawn to the model it should run on: model:'sonnet' for bulk/mechanical work, model:'opus' for reasoning/review, or an explicit Fable pin only from an apex seat (orchestrator/skillcreatorLead).",
+      "Pin this spawn to the model it should run on: model:'sonnet' for bulk/mechanical work, model:'opus' for reasoning/review, or ask an apex lead to start it as a T3 delegate_task child (providerInstanceId claudeAgent, model claude-fable-5-2) when Etan asked for it.",
       "Fable leaves the subscription window around Jul-7; an accidental Fable spawn spends usage credits. See the agent-routing table for what needs which model.",
       details,
     ].join(" "),
@@ -111,7 +112,7 @@ function main() {
     const parsed = JSON.parse(raw);
     const payload = enrichPayload(parsed);
     if (payload == null) return allow();
-    const result = detectModelPin(payload);
+    const result = detectModelPin(payload, { threadId: process.env.T3CODE_THREAD_ID ?? "", cwd: process.cwd(), home: homedir() });
     if (result.verdict === "FLAG") return block(result);
     if (result.verdict === "ADVISORY") return advisory(result);
     return allow();

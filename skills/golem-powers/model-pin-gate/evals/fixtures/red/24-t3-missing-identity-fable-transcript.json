@@ -1,0 +1,29 @@
+{
+  "specimen": "t3-missing-identity-fable-transcript",
+  "expect": "FLAG",
+  "violation": "MODELPIN_FABLE_BELOW_APEX",
+  "action_contains": "delegate_task",
+  "context": {
+    "threadId": ""
+  },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "cwd": "@APEX_ROOT@",
+    "tool_name": "mcp__t3-code__delegate_task",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5-2"
+        }
+      }
+    ],
+    "tool_input": {
+      "target": {
+        "providerInstanceId": "claudeAgent",
+        "model": "claude-fable-5-2"
+      },
+      "task": "synthetic advisor"
+    }
+  }
+}

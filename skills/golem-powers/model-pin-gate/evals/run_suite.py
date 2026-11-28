@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
-HOOK = ROOT / "scripts" / "model-pin-gate-hook.mjs"
+HOOK = Path(os.environ.get("MODEL_PIN_GATE_HOOK", ROOT / "scripts" / "model-pin-gate-hook.mjs"))
 NODE = os.environ.get("MODEL_PIN_GATE_NODE") or shutil.which("node") or "node"
 TIMEOUT_SECONDS = float(os.environ.get("MODEL_PIN_GATE_TIMEOUT_SECONDS", "0.5"))
 
@@ -39,11 +39,24 @@ def load_cases() -> list[tuple[str, Path, dict]]:
 
 def run_hook(fixture: dict) -> tuple[bool, str]:
     payload = fixture["payload"]
+    env = dict(os.environ, T3CODE_THREAD_ID="")
+    cwd = None
+    if "context" in fixture:
+        temporary_home = tempfile.TemporaryDirectory(prefix="modelpin-t3-")
+        home = Path(temporary_home.name)
+        apex = home / "Gits/skill-creator"
+        worker = home / ".t3/worktrees/skill-creator/worker"
+        (apex / ".git").mkdir(parents=True)
+        worker.mkdir(parents=True)
+        payload = json.loads(json.dumps(payload).replace("@APEX_ROOT@", str(apex)).replace("@WORKTREE_ROOT@", str(worker)))
+        env.update(HOME=str(home), T3CODE_THREAD_ID=fixture["context"]["threadId"])
+        cwd = payload["cwd"]
     try:
         started = time.perf_counter()
         proc = subprocess.run(
             [NODE, str(HOOK)],
             input=json.dumps(payload),
+            env=env, cwd=cwd,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -79,6 +92,8 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
         violation = fixture.get("violation")
         if violation and violation not in reason:
             return False, f"reason missing {violation}: {reason!r}"
+        if fixture.get("action_contains") and fixture["action_contains"] not in reason:
+            return False, "missing sanctioned delegate_task path"
         lowered = reason.lower()
         for bad in (" never ", " don't ", " do not "):
             if bad in f" {lowered} ":

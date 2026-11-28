@@ -3,10 +3,11 @@
 // workers only with explicit cheaper/top-worker model pins; model inheritance is
 // forbidden and Fable may not be pinned below apex seats.
 
-import { test, expect } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { test, expect, afterAll } from "bun:test";
+import { readdirSync, readFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 
@@ -36,6 +37,17 @@ function loadFixtures(dir) {
     .map((f) => ({ file: f, ...JSON.parse(readFileSync(path.join(dir, f), "utf8")) }));
 }
 
+const fixtureHome = mkdtempSync(path.join(tmpdir(), "modelpin-t3-"));
+const apexRoot = path.join(fixtureHome, "Gits/skill-creator");
+const workerRoot = path.join(fixtureHome, ".t3/worktrees/skill-creator/worker");
+mkdirSync(path.join(apexRoot, ".git"), { recursive: true });
+mkdirSync(workerRoot, { recursive: true });
+function replay(fx) {
+  const payload = JSON.parse(JSON.stringify(fx.payload).replaceAll("@APEX_ROOT@", apexRoot).replaceAll("@WORKTREE_ROOT@", workerRoot));
+  const context = fx.context ? { threadId: fx.context.threadId, cwd: payload.cwd, home: fixtureHome } : { threadId: "" };
+  return detectModelPin(payload, context);
+}
+afterAll(() => rmSync(fixtureHome, { recursive: true, force: true }));
 const reds = loadFixtures(redDir);
 const greens = loadFixtures(greenDir);
 
@@ -330,10 +342,11 @@ test("a cmux new_split Fable launcher from a non-apex seat is blocked", () => {
 
 for (const fx of reds) {
   test(`RED ${fx.file} (${fx.specimen}) -> ${fx.expect}`, () => {
-    const result = detectModelPin(fx.payload);
+    const result = replay(fx);
     if (fx.expect === "FLAG") {
       expect(result.verdict).toBe("FLAG");
       expect(result.violations.map((v) => v.code)).toContain(fx.violation);
+      if (fx.action_contains) expect(result.violations[0].action).toContain(fx.action_contains);
       expect(result.violations.map((v) => v.action).join(" ")).not.toMatch(/\b(never|don't|do not)\b/i);
     } else if (fx.expect === "ADVISORY") {
       expect(result.verdict).toBe("ADVISORY");
@@ -348,7 +361,7 @@ for (const fx of reds) {
 for (const fx of greens) {
   test(`GREEN ${fx.file} (${fx.specimen}) -> PASS`, () => {
     const started = performance.now();
-    const result = detectModelPin(fx.payload);
+    const result = replay(fx);
     const elapsedMs = performance.now() - started;
     expect(result.verdict).toBe("PASS");
     expect(result.violations.length).toBe(0);
@@ -360,6 +373,62 @@ for (const fx of greens) {
 
 test("replay is deterministic", () => {
   for (const fx of [...reds, ...greens]) {
-    expect(JSON.stringify(detectModelPin(fx.payload))).toBe(JSON.stringify(detectModelPin(fx.payload)));
+    expect(JSON.stringify(replay(fx))).toBe(JSON.stringify(replay(fx)));
   }
+});
+
+
+test("T3 worker seat claims and Fable transcripts cannot grant apex authority", () => {
+  const fx = reds.find(fx => fx.specimen === "15-t3-worker-delegate");
+  for (const threadId of ["thread:delegated-task:fixture", "thread:uuid-child"]) {
+    const forged = structuredClone(fx);
+    forged.context.threadId = threadId;
+    forged.payload.seat_id = "skillcreatorLead";
+    forged.payload.tool_input.seat_id = "orchestrator";
+    forged.payload.transcript = [{ type: "assistant", message: { model: "claude-fable-5-2" } }];
+    expect(replay(forged).verdict).toBe("FLAG");
+  }
+});
+
+test("T3 lead identity needs matching actual cwd and exact apex root", () => {
+  const fx = greens.find(fx => fx.specimen === "14-t3-lead-delegate");
+  const payload = JSON.parse(JSON.stringify(fx.payload).replaceAll("@APEX_ROOT@", apexRoot));
+  for (const context of [
+    { threadId: "thread:delegated-task:fixture", cwd: apexRoot, home: fixtureHome },
+    { threadId: "thread:lead:fixture", cwd: workerRoot, home: fixtureHome },
+    { threadId: "thread:lead:fixture", cwd: apexRoot, home: workerRoot },
+  ]) expect(detectModelPin(payload, context).verdict).toBe("FLAG");
+});
+
+test("T3 delegate matcher and nested pin are enforced for both MCP spellings", () => {
+  const manifest = JSON.parse(readFileSync(path.join(here, "../../../../scripts/hooks/manifest.json"), "utf8"));
+  const matchers = Object.values(manifest.hosts).flatMap(host => host).filter(entry => entry.id === "model-pin-gate").map(entry => entry.matcher);
+  expect(matchers.length).toBeGreaterThan(0);
+  for (const name of ["mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]) {
+    for (const matcher of matchers) expect(new RegExp(`^(?:${matcher})$`).test(name)).toBe(true);
+    expect(detectModelPin({ tool_name: name, tool_input: { target: { model: "claude-fable-5-2" } } }).verdict).toBe("FLAG");
+    expect(detectModelPin({ tool_name: name, tool_input: { target: { model: "claude-opus-5-5" } } }).verdict).toBe("PASS");
+  }
+});
+
+
+test("delegate pin controls preserve explicit models and other providers", () => {
+  const base = { tool_name: "mcp__t3-code__delegate_task", transcript: [{ type: "assistant", message: { model: "claude-fable-5-2" } }] };
+  for (const providerInstanceId of ["codex", "codex-worker", "cursor", "antigravity"]) {
+    expect(detectModelPin({ ...base, tool_input: { target: { providerInstanceId } } }).verdict).toBe("PASS");
+  }
+  for (const providerInstanceId of ["claudeAgent", "claude-eval", "custom-claude"]) {
+    expect(detectModelPin({ ...base, tool_input: { target: { providerInstanceId, model: "claude-opus-5-5" } } }).verdict).toBe("PASS");
+  }
+  const fx = structuredClone(greens.find(fx => fx.specimen === "14-t3-lead-delegate"));
+  fx.payload.transcript = base.transcript;
+  delete fx.payload.tool_input.target;
+  expect(replay(fx).violations[0].code).toBe("MODELPIN_DELEGATE_UNPINNED");
+  expect(detectModelPin({ ...base, tool_input: {} }).violations[0].code).toBe("MODELPIN_DELEGATE_UNPINNED");
+});
+
+test("all unpinned Agent refusals name the separate T3 route", () => {
+  const result = detectModelPin({ tool_name: "Agent", transcript: [{ type: "assistant", message: { model: "claude-fable-5-2" } }], tool_input: {} });
+  expect(result.violations[0].action).toContain("delegate_task");
+  expect(result.violations[0].action).not.toContain("explicit Fable pin only");
 });
