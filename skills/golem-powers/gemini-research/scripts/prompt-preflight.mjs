@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evaluateGeminiPreflight } from '../../research-lifecycle/scripts/lifecycle-gate.mjs';
 
@@ -153,13 +154,45 @@ export function evaluatePrompt(text) {
 
 // Attach route: the prepared folder holds exactly the documents the Grounding list names
 // (hidden files and the manifest excluded), so a renamed copy cannot leave the prompt or key stale.
-export function evaluateAttached(text, files) {
+// AIDEV-NOTE: each key answer must also equal a WHOLE unit of its file (a table cell, a line
+// without its list/heading marker, or the whole value after a `label:`; ** __ and backticks ignored). R01 2026-11-26: keys held "985.926 s"
+// while the cell said "985.926 s (+85.926 s over deadline)"; a researcher who copied the cell failed the
+// exact --harvest-check. This guards authoring only; --harvest-check stays exact.
+export function wholeUnits(content) {
+  const visible = value => value.replace(/\*\*|__|`/g, '').trim();
+  const pipe = /(?<!\\)\|/;
+  // GFM rows: split on unescaped pipes; outer pipes are optional; `\|` is a literal pipe in a cell.
+  const cells = line => line.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(pipe).map(c => c.replace(/\\\|/g, '|'));
+  const isDelimiter = line => pipe.test(line) && cells(line).every(c => /^\s*:?-+:?\s*$/.test(c));
+  const lines = content.split(/\r?\n/);
+  const units = new Set();
+  let table = false;
+  for (const [i, raw] of lines.entries()) {
+    const line = raw.trim();
+    table = pipe.test(line) && (table || isDelimiter(line) || isDelimiter(lines[i + 1] || ''));
+    if (!line) continue;
+    units.add(visible(line));
+    const item = line.replace(/^(?:#{1,6}|[-*+]|\d+[.)])\s+/, '');
+    units.add(visible(item));
+    const labelled = item.match(/^[^:|]{1,60}:\s+(.+)$/);
+    if (labelled) units.add(visible(labelled[1]));
+    if (table) for (const cell of cells(line)) units.add(visible(cell));
+  }
+  units.delete('');
+  return units;
+}
+
+export function evaluateAttached(text, files, contents = {}) {
   const { sections } = parsePrompt(text);
   const grounding = (sections.get('Grounding')?.[0] || []).join('\n');
   const named = [...grounding.matchAll(/^- "([^"\n]+)"$/gm)].map(match => match[1]).sort();
   const present = files.filter(f => !f.startsWith('.') && f !== '00-GROUNDING-MANIFEST.md').sort();
-  return JSON.stringify(named) === JSON.stringify(present) ? []
-    : [`ATTACHED_SET: folder files ${JSON.stringify(present)} must equal the Grounding names ${JSON.stringify(named)}; rename in grounding, key and manifest, then re-emit`];
+  if (JSON.stringify(named) !== JSON.stringify(present)) {
+    return [`ATTACHED_SET: folder files ${JSON.stringify(present)} must equal the Grounding names ${JSON.stringify(named)}; rename in grounding, key and manifest, then re-emit`];
+  }
+  return admissionKey(text).key.flatMap(row => typeof contents[row.document] !== 'string'
+    || wholeUnits(contents[row.document]).has(row.answer) ? []
+    : [`ADMISSION_KEY_PART: answer ${JSON.stringify(row.answer)} for "${row.document}" is not a whole table cell or line of that file; store the full cell text, or pick a question whose answer is a whole cell`]);
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -173,17 +206,18 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     }
     const emit = args[0] === '--emit';
     if (emit) args.shift();
-    let attached;
+    let attached, contents;
     if (args[0] === '--attached') {
       if (!args[1]) throw new Error('--attached requires <prepared folder>');
       attached = readdirSync(args[1], { withFileTypes: true }).filter(e => e.isFile()).map(e => e.name);
+      contents = Object.fromEntries(attached.map(name => [name, readFileSync(join(args[1], name), 'utf8')]));
       args.splice(0, 2);
     }
     if (args.length !== 1) throw new Error('usage: prompt-preflight.mjs [--emit] [--attached <folder>] <prompt.md | ->');
     const text = readFileSync(args[0] === '-' ? 0 : args[0], 'utf8');
     const result = evaluatePrompt(text);
     if (attached) {
-      result.failures.push(...evaluateAttached(text, attached));
+      result.failures.push(...evaluateAttached(text, attached, contents));
       result.pass = result.failures.length === 0;
     }
     if (emit && result.pass) process.stdout.write(researcherPrompt(text));

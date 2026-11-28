@@ -312,7 +312,7 @@ CHECK
     add_branch_worktree "$repo" topic >/dev/null
   done
   git -C "$HOME/Gits/b-refused" config core.bare true
-  run "$WORKTREE_GC" --dry-run
+  run "$WORKTREE_GC" --dry-run --idle-hours 0
   [ "$status" -eq 2 ]
   [[ "$output" == *"a-first · "*"REMOVE"* ]] || return 1
   [[ "$output" == *"ERROR $HOME/Gits/b-refused exit 2: Refusing --repo"* ]] || return 1

@@ -24,6 +24,7 @@ setup() {
   : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GOLEMS_WORKTREE_GC_LOCK="$TEST_ROOT/gc.lock"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
+  export GC_FIXTURE_AGE="$BATS_TEST_DIRNAME/lib/worktree-gc-age-fixtures.py"
   export WORKTREE_GC="$TEST_ROOT/contained-gc"
   cat > "$WORKTREE_GC" <<'GUARD'
 #!/usr/bin/env bash
@@ -47,6 +48,9 @@ if [[ -n "$candidate" ]]; then
 else
   [[ "$HOME" == "$GC_FIXTURE_ROOT/"* ]] || { echo "CONTAINMENT refused default HOME" >&2; exit 97; }
 fi
+# Fixture candidates are over an hour old unless a test asks for the true
+# minutes-old state (GC_FIXTURE_FRESH=1, test-worktree-gc-fresh.bats).
+[[ "${GC_FIXTURE_FRESH:-0}" == 1 ]] || python3 "$GC_FIXTURE_AGE" "$GC_FIXTURE_ROOT"
 exec "$GC_SOURCE" ${args[@]+"${args[@]}"}
 GUARD
   chmod +x "$WORKTREE_GC"
