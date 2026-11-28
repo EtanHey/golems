@@ -54,6 +54,8 @@
     "scripts/lib/worktree-gc-plan.py",
     "scripts/lib/worktree-census-core.ts",
     "scripts/lib/worktree-gc-prs.sh",
+    "scripts/lib/worktree-gc-remote.py",
+    "scripts/lib/contracts/cmux-current-census/v1/schema.json",
     "scripts/lib/worktree-git-env.sh",
     "scripts/lib/worktree-archive.py",
     "scripts/lib/worktree-census-lexical.ts",
